@@ -1,0 +1,112 @@
+{
+  "product_authors": {
+    "Oracle": {
+      "products": {
+        "SaaS": {
+          "roles": [
+            "Oracle Fusion Functional Consultant",
+            "Oracle Fusion Technical Consultant",
+            "Oracle Integration Cloud (OIC) Developer",
+            "Oracle Reporting Consultant (OTBI/BIP)",
+            "Oracle Cloud Architect",
+            "Oracle Cloud Project Manager",
+            "Oracle Cloud Security Consultant"
+          ]
+        },
+        "E-Business Suite": {
+          "roles": [
+            "Oracle EBS Functional Consultant",
+            "Oracle EBS Technical Consultant",
+            "Oracle EBS Developer (PL/SQL, Forms/OAF)",
+            "Oracle EBS Techno-Functional Consultant",
+            "Oracle EBS DBA",
+            "Oracle Workflow Specialist",
+            "Oracle EBS Project Manager"
+          ]
+        },
+        "PeopleSoft": {
+          "roles": [
+            "PeopleSoft HCM Consultant",
+            "PeopleSoft Finance Consultant",
+            "PeopleSoft Developer",
+            "PeopleSoft Integration Specialist",
+            "PeopleSoft Admin/DBA",
+            "PeopleSoft Analyst"
+          ]
+        },
+        "JD Edwards": {
+          "roles": [
+            "JDE Functional Consultant",
+            "JDE Technical Developer",
+            "JDE CNC Administrator",
+            "JDE Business Analyst",
+            "JDE Architect"
+          ]
+        }
+      }
+    },
+    "SAP": {
+      "products": {
+        "S/4HANA": {
+          "roles": [
+            "SAP MM Consultant",
+            "SAP SD Consultant",
+            "SAP PP Consultant",
+            "SAP FICO Consultant",
+            "SAP ABAP Developer",
+            "SAP Basis Administrator",
+            "SAP PI/PO Integration Specialist",
+            "SAP BTP Developer",
+            "SAP SuccessFactors Consultant"
+          ]
+        }
+      }
+    },
+    "Workday": {
+      "products": {
+        "HCM": {
+          "roles": [
+            "Workday HCM Consultant",
+            "Workday Integration Developer",
+            "Workday Reporting Consultant",
+            "Workday Security Consultant",
+            "Workday Architect"
+          ]
+        },
+        "Financials": {
+          "roles": [
+            "Workday Financial Consultant",
+            "Workday FDM Consultant"
+          ]
+        }
+      }
+    },
+    "Microsoft": {
+      "products": {
+        "Dynamics 365": {
+          "roles": [
+            "Dynamics 365 Functional Consultant",
+            "Dynamics 365 Developer",
+            "Power Platform Consultant",
+            "Azure Integration Developer",
+            "Azure Architect"
+          ]
+        }
+      }
+    },
+    "Salesforce": {
+      "products": {
+        "Salesforce Cloud": {
+          "roles": [
+            "Salesforce Admin",
+            "Salesforce Developer",
+            "Salesforce Architect",
+            "Salesforce Functional Consultant",
+            "Salesforce Integration Specialist",
+            "Salesforce Marketing Cloud Specialist"
+          ]
+        }
+      }
+    }
+  }
+}

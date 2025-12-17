@@ -1,0 +1,215 @@
+{
+  "base_skills": {
+    "Programming": [
+      "Python",
+      "Java",
+      "C#",
+      "JavaScript",
+      "SQL",
+      "PL/SQL",
+      "Shell Scripting",
+      "XML"
+    ],
+    "Cloud": [
+      "AWS",
+      "Azure",
+      "Google Cloud Platform",
+      "Oracle Cloud Infrastructure",
+      "Salesforce Cloud",
+      "Workday Cloud"
+    ],
+    "Development": [
+      "REST APIs",
+      "Microservices",
+      "Docker",
+      "Kubernetes",
+      "CI/CD",
+      "Git",
+      "APIs",
+      "Web Services"
+    ],
+    "Database": [
+      "Oracle Database",
+      "SQL Server",
+      "MySQL",
+      "PostgreSQL",
+      "NoSQL",
+      "MongoDB"
+    ]
+  },
+  "role_skills": {
+    "Oracle": {
+      "SaaS": {
+        "Oracle Fusion Functional Consultant": [
+          "Oracle Fusion Cloud",
+          "Financials",
+          "Supply Chain",
+          "Human Capital Management",
+          "Modules Configuration",
+          "Business Process Design"
+        ],
+        "Oracle Fusion Technical Consultant": [
+          "Oracle ADF",
+          "Java",
+          "PL/SQL",
+          "Oracle Fusion Architecture",
+          "REST APIs",
+          "Integration Cloud"
+        ],
+        "Oracle Integration Cloud (OIC) Developer": [
+          "Oracle Integration Cloud",
+          "Integration Patterns",
+          "API Management",
+          "iPaaS",
+          "Middleware"
+        ],
+        "Oracle Reporting Consultant (OTBI/BIP)": [
+          "Oracle OTBI",
+          "Business Intelligence Publisher",
+          "Analytics",
+          "Reporting Tools",
+          "Data Visualization"
+        ],
+        "Oracle Cloud Architect": [
+          "Cloud Architecture",
+          "Solution Design",
+          "Security",
+          "Scalability",
+          "Performance Tuning"
+        ]
+      },
+      "E-Business Suite": {
+        "Oracle EBS Functional Consultant": [
+          "Oracle EBS",
+          "General Ledger",
+          "Accounts Payable",
+          "Accounts Receivable",
+          "Inventory",
+          "Order Management"
+        ],
+        "Oracle EBS Technical Consultant": [
+          "PL/SQL",
+          "Oracle Forms",
+          "Oracle Reports",
+          "Database Administration",
+          "Unix/Linux"
+        ],
+        "Oracle EBS Developer (PL/SQL, Forms/OAF)": [
+          "PL/SQL",
+          "Oracle Forms",
+          "OAF",
+          "Java",
+          "SQL"
+        ]
+      }
+    },
+    "SAP": {
+      "S/4HANA": {
+        "SAP MM Consultant": [
+          "Materials Management",
+          "Procurement",
+          "Inventory",
+          "Warehouse Management",
+          "SAP Fiori"
+        ],
+        "SAP SD Consultant": [
+          "Sales Distribution",
+          "Order Management",
+          "Billing",
+          "Pricing",
+          "SAP Fiori"
+        ],
+        "SAP FICO Consultant": [
+          "Financial Accounting",
+          "Controlling",
+          "Profitability Analysis",
+          "Cost Accounting",
+          "General Ledger"
+        ],
+        "SAP ABAP Developer": [
+          "ABAP",
+          "Object-Oriented Programming",
+          "SAP NetWeaver",
+          "Debugging",
+          "Performance Tuning"
+        ]
+      }
+    },
+    "Workday": {
+      "HCM": {
+        "Workday HCM Consultant": [
+          "Workday HCM",
+          "Talent Management",
+          "Compensation",
+          "Benefits",
+          "Payroll"
+        ],
+        "Workday Integration Developer": [
+          "Workday Studio",
+          "Integration",
+          "SOAP/REST APIs",
+          "XML",
+          "Error Handling"
+        ]
+      },
+      "Financials": {
+        "Workday Financial Consultant": [
+          "Workday Financials",
+          "General Ledger",
+          "Accounts Payable",
+          "Accounts Receivable",
+          "Revenue Management"
+        ]
+      }
+    },
+    "Microsoft": {
+      "Dynamics 365": {
+        "Dynamics 365 Functional Consultant": [
+          "Dynamics 365",
+          "Business Central",
+          "Finance",
+          "Supply Chain",
+          "Customer Engagement"
+        ],
+        "Dynamics 365 Developer": [
+          "C#",
+          ".NET",
+          "JavaScript",
+          "Power Platform",
+          "Azure"
+        ],
+        "Power Platform Consultant": [
+          "Power Apps",
+          "Power Automate",
+          "Power BI",
+          "Power Virtual Agents",
+          "Dataverse"
+        ]
+      }
+    },
+    "Salesforce": {
+      "Salesforce Cloud": {
+        "Salesforce Administrator": [
+          "Salesforce",
+          "Apex",
+          "Visualforce",
+          "User Management",
+          "Data Management"
+        ],
+        "Salesforce Developer": [
+          "Apex",
+          "Visualforce",
+          "Lightning",
+          "JavaScript",
+          "REST APIs"
+        ],
+        "Salesforce Business Analyst": [
+          "Requirements Gathering",
+          "Salesforce Configuration",
+          "Data Analysis",
+          "Process Mapping"
+        ]
+      }
+    }
+  }
+}
