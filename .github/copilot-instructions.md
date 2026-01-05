@@ -5,7 +5,7 @@
 This is a **candidate-centric talent marketplace POC** with a two-tier structure:
 
 - **Backend**: FastAPI + SQLModel + SQLite (candidate profiles, skills, resumes, job role ontology)
-- **Frontend**: Streamlit (candidate profile UI and AI enrichment preview)
+- **Frontend**: React + TypeScript (candidate profile UI and AI enrichment preview)
 
 **Key Data Flow**: Candidates create profiles → upload resumes → system extracts skills (placeholder) → matches against job role ontology → displays fit scores.
 

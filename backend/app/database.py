@@ -5,14 +5,28 @@ engine = create_engine(DATABASE_URL, echo=True)
 
 
 def init_db():
-    from .models import (  # noqa
-        Candidate,
+    """Initialize database and create all tables."""
+    # Import ALL models here to register them with SQLModel.metadata
+    from .models import (
+        # Auth
+        User,
+        OTPStore,
+        # Candidate side
         Skill,
         Certification,
+        Resume,
+        Candidate,
+        CandidateJobPreference,
+        # Company side
+        CompanyAccount,
+        CompanyUser,
+        JobPost,
+        Swipe,
+        Application,
+        # Ontology
         ProductAuthor,
         Product,
         JobRole,
-        Resume,
     )
 
     SQLModel.metadata.create_all(bind=engine)

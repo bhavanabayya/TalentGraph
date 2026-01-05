@@ -1,0 +1,219 @@
+/* Candidate Card - Dating Style UI */
+
+.candidate-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-width: 400px;
+  width: 100%;
+  overflow: hidden;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.card-header h2 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.match-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.score {
+  font-size: 32px;
+  font-weight: 700;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.score-0,
+.score-1 {
+  background: rgba(220, 38, 38, 0.3);
+  color: #fecaca;
+}
+
+.score-2,
+.score-3 {
+  background: rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+}
+
+.score-4,
+.score-5 {
+  background: rgba(34, 197, 94, 0.3);
+  color: #bbf7d0;
+}
+
+.match-score .label {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.card-details {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.detail-row .label {
+  color: #666;
+  font-weight: 600;
+  min-width: 100px;
+}
+
+.detail-row span:last-child {
+  color: #333;
+  text-align: right;
+  flex: 1;
+}
+
+.card-skills {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.card-skills h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: #333;
+  font-weight: 600;
+}
+
+.skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skill-tag {
+  background: #e8f0fe;
+  color: #0066cc;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.card-match {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+}
+
+.card-match h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: #333;
+  font-weight: 600;
+}
+
+.match-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.match-row span:first-child {
+  color: #666;
+  font-weight: 500;
+}
+
+.match-good {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.match-bad {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.card-actions {
+  padding: 20px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-pass,
+.btn-like {
+  flex: 1;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-pass {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.btn-pass:hover {
+  background: #e5e7eb;
+  transform: scale(1.05);
+}
+
+.btn-like {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-like:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: scale(1.05);
+}
+
+@media (max-width: 480px) {
+  .candidate-card {
+    max-width: 100%;
+  }
+
+  .card-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-pass,
+  .btn-like {
+    padding: 12px;
+  }
+}

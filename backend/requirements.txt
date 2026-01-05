@@ -5,4 +5,4 @@ pydantic[email]
 python-multipart
 python-dotenv
 PyJWT
-requests
+passlib[argon2]

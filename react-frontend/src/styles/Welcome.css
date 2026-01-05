@@ -1,0 +1,117 @@
+/* Welcome Page Styles */
+
+.welcome-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.welcome-hero {
+  text-align: center;
+  color: white;
+  margin-bottom: 60px;
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+.welcome-hero h1 {
+  font-size: 56px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.welcome-hero p {
+  font-size: 24px;
+  opacity: 0.9;
+}
+
+.welcome-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.option-card {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.option-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+}
+
+.option-card h2 {
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.option-card p {
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.option-card .btn {
+  width: 100%;
+  margin-bottom: 20px;
+  font-size: 16px;
+  padding: 14px 20px;
+}
+
+.small-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.small-text a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.small-text a:hover {
+  text-decoration: underline;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .welcome-options {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .welcome-hero h1 {
+    font-size: 36px;
+  }
+
+  .welcome-hero p {
+    font-size: 18px;
+  }
+
+  .option-card {
+    padding: 30px 20px;
+  }
+}

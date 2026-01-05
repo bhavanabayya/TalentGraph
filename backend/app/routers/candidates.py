@@ -1,18 +1,27 @@
 from pathlib import Path
 import json
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
 from ..database import get_session
-from ..models import Candidate, Skill, Certification, Resume
+from ..models import Candidate, Skill, Certification, Resume, User, Application, JobPost
 from ..schemas import (
     CandidateCreate,
     CandidateRead,
+    CandidateProfileUpdate,
+    SkillCreate,
+    SkillRead,
+    CertificationCreate,
+    CertificationRead,
     RoleFitRequest,
     RoleFitResponse,
     ResumeRead,
+    ApplicationListRead,
+    MatchScoreDisplay,
 )
+from ..security import get_current_user, get_current_user_email, require_candidate
+from ..matching import calculate_match_score
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -21,92 +30,259 @@ UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
-@router.post("/", response_model=CandidateRead)
-def create_candidate(
-    candidate_in: CandidateCreate,
-    session: Session = Depends(get_session),
+# ============================================================================
+# PROFILE MANAGEMENT
+# ============================================================================
+
+@router.get("/me", response_model=CandidateRead)
+def get_my_profile(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
 ):
-    candidate = Candidate(
-        name=candidate_in.name,
-        email=candidate_in.email,
-        location=candidate_in.location,
-        product_author=candidate_in.product_author,
-        product=candidate_in.product,
-        primary_role=candidate_in.primary_role,
-        summary=candidate_in.summary,
-        years_experience=candidate_in.years_experience,
-        rate_min=candidate_in.rate_min,
-        rate_max=candidate_in.rate_max,
-        availability=candidate_in.availability,
-        work_type=candidate_in.work_type,
-        location_preference_1=candidate_in.location_preference_1,
-        location_preference_2=candidate_in.location_preference_2,
-        location_preference_3=candidate_in.location_preference_3,
-        job_roles=json.dumps(candidate_in.job_roles) if candidate_in.job_roles else None,
-        preference_1=candidate_in.preference_1,
-        preference_2=candidate_in.preference_2,
-        preference_3=candidate_in.preference_3,
-    )
-
-    session.add(candidate)
-    session.flush()  # gets candidate.id
-
-    for s in candidate_in.skills:
-        session.add(Skill(candidate_id=candidate.id, name=s.name, level=s.level))
-
-    for c in candidate_in.certifications:
-        session.add(
-            Certification(
-                candidate_id=candidate.id,
-                name=c.name,
-                issuer=c.issuer,
-                year=c.year,
-            )
+    """Get authenticated candidate's profile."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
         )
+    
+    return candidate
 
+
+@router.put("/me", response_model=CandidateRead)
+def update_my_profile(
+    update: CandidateProfileUpdate,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Update authenticated candidate's profile."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    # Update only provided fields
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(candidate, field, value)
+    
+    session.add(candidate)
     session.commit()
     session.refresh(candidate)
+    
     return candidate
 
 
 @router.get("/{candidate_id}", response_model=CandidateRead)
 def get_candidate(candidate_id: int, session: Session = Depends(get_session)):
+    """Get candidate profile by ID (public view)."""
     candidate = session.exec(
         select(Candidate).where(Candidate.id == candidate_id)
     ).first()
     if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
     return candidate
 
 
-@router.get("/by-email/{email}", response_model=CandidateRead)
-def get_candidate_by_email(email: str, session: Session = Depends(get_session)):
-    """Get candidate profile by email address for auto-loading on re-login."""
-    candidate = session.exec(
-        select(Candidate).where(Candidate.email == email)
-    ).first()
-    if not candidate:
-        raise HTTPException(status_code=404, detail="No profile found for this email")
-    return candidate
+# ============================================================================
+# SKILLS MANAGEMENT
+# ============================================================================
 
-
-# ---------- Resume Management ----------
-
-
-@router.post("/{candidate_id}/resumes", response_model=ResumeRead)
-async def upload_resume_file(
-    candidate_id: int,
-    file: UploadFile = File(...),
-    session: Session = Depends(get_session),
+@router.post("/me/skills", response_model=SkillRead)
+def add_skill(
+    skill: SkillCreate,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
 ):
+    """Add a skill to candidate profile."""
+    user_id = current_user.get("user_id")
+    
     candidate = session.exec(
-        select(Candidate).where(Candidate.id == candidate_id)
+        select(Candidate).where(Candidate.user_id == user_id)
     ).first()
+    
     if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    new_skill = Skill(
+        candidate_id=candidate.id,
+        name=skill.name,
+        level=skill.level,
+        category=skill.category
+    )
+    session.add(new_skill)
+    session.commit()
+    session.refresh(new_skill)
+    
+    return SkillRead(id=new_skill.id, name=new_skill.name, level=new_skill.level, category=new_skill.category)
 
+
+@router.get("/me/skills", response_model=list[SkillRead])
+def list_my_skills(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Get all skills for authenticated candidate."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    skills = session.exec(
+        select(Skill).where(Skill.candidate_id == candidate.id)
+    ).all()
+    
+    return [SkillRead(id=s.id, name=s.name, level=s.level, category=s.category) for s in skills]
+
+
+@router.delete("/me/skills/{skill_id}")
+def remove_skill(
+    skill_id: int,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Delete a skill from candidate profile."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    skill = session.exec(
+        select(Skill).where(
+            (Skill.id == skill_id) & (Skill.candidate_id == candidate.id)
+        )
+    ).first()
+    
+    if not skill:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Skill not found"
+        )
+    
+    session.delete(skill)
+    session.commit()
+    
+    return {"ok": True, "message": "Skill removed"}
+
+
+# ============================================================================
+# CERTIFICATIONS MANAGEMENT
+# ============================================================================
+
+@router.post("/me/certifications", response_model=CertificationRead)
+def add_certification(
+    cert: CertificationCreate,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Add a certification to candidate profile."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    new_cert = Certification(
+        candidate_id=candidate.id,
+        name=cert.name,
+        issuer=cert.issuer,
+        year=cert.year
+    )
+    session.add(new_cert)
+    session.commit()
+    session.refresh(new_cert)
+    
+    return CertificationRead(id=new_cert.id, name=new_cert.name, issuer=new_cert.issuer, year=new_cert.year)
+
+
+@router.get("/me/certifications", response_model=list[CertificationRead])
+def list_my_certifications(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Get all certifications for authenticated candidate."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    certs = session.exec(
+        select(Certification).where(Certification.candidate_id == candidate.id)
+    ).all()
+    
+    return [CertificationRead(id=c.id, name=c.name, issuer=c.issuer, year=c.year) for c in certs]
+
+
+# ============================================================================
+# RESUME MANAGEMENT
+# ============================================================================
+
+@router.post("/me/resumes", response_model=ResumeRead)
+async def upload_resume(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Upload a resume file."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
     contents = await file.read()
-    dest_path = UPLOAD_DIR / f"candidate_{candidate_id}_{file.filename}"
+    dest_path = UPLOAD_DIR / f"candidate_{candidate.id}_{file.filename}"
     dest_path.write_bytes(contents)
 
     resume = Resume(
@@ -119,109 +295,141 @@ async def upload_resume_file(
     session.commit()
     session.refresh(resume)
 
-    return ResumeRead(id=resume.id, filename=resume.filename)
+    return ResumeRead(id=resume.id, filename=resume.filename, created_at=resume.created_at.isoformat())
 
 
-@router.post("/{candidate_id}/profile-picture")
-async def upload_profile_picture(
-    candidate_id: int,
-    file: UploadFile = File(...),
-    session: Session = Depends(get_session),
+@router.get("/me/resumes", response_model=list[ResumeRead])
+def list_my_resumes(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
 ):
+    """Get all resumes for authenticated candidate."""
+    user_id = current_user.get("user_id")
+    
     candidate = session.exec(
-        select(Candidate).where(Candidate.id == candidate_id)
+        select(Candidate).where(Candidate.user_id == user_id)
     ).first()
+    
     if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-
-    # Only allow image files
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are allowed")
-
-    contents = await file.read()
-    dest_path = UPLOAD_DIR / f"profile_{candidate_id}_{file.filename}"
-    dest_path.write_bytes(contents)
-
-    # Update candidate with profile picture path
-    candidate.profile_picture_path = str(dest_path)
-    session.add(candidate)
-    session.commit()
-    session.refresh(candidate)
-
-    return {"ok": True, "message": "Profile picture uploaded", "path": str(dest_path)}
-
-
-@router.get("/{candidate_id}/profile-picture")
-def get_profile_picture(candidate_id: int, session: Session = Depends(get_session)):
-    candidate = session.exec(
-        select(Candidate).where(Candidate.id == candidate_id)
-    ).first()
-    if not candidate or not candidate.profile_picture_path:
-        raise HTTPException(status_code=404, detail="Profile picture not found")
-    picture_path = Path(candidate.profile_picture_path)
-    if not picture_path.exists():
-        raise HTTPException(status_code=404, detail="Profile picture file not found")
-
-    return FileResponse(
-        picture_path,
-        media_type="image/jpeg",
-        headers={"Content-Disposition": "inline"}
-    )
-
-
-@router.get("/{candidate_id}/resumes", response_model=list[ResumeRead])
-def list_resumes(candidate_id: int, session: Session = Depends(get_session)):
-    candidate = session.exec(
-        select(Candidate).where(Candidate.id == candidate_id)
-    ).first()
-    if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
 
     resumes = session.exec(
-        select(Resume).where(Resume.candidate_id == candidate_id)
+        select(Resume).where(Resume.candidate_id == candidate.id)
     ).all()
-    return [ResumeRead(id=r.id, filename=r.filename) for r in resumes]
+    
+    return [ResumeRead(id=r.id, filename=r.filename, created_at=r.created_at.isoformat()) for r in resumes]
 
 
-@router.get("/{candidate_id}/resumes/{resume_id}/download")
+@router.get("/me/resumes/{resume_id}/download")
 def download_resume(
-    candidate_id: int, resume_id: int, session: Session = Depends(get_session)
+    resume_id: int,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
 ):
+    """Download a resume file."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
     resume = session.exec(
         select(Resume).where(
-            (Resume.id == resume_id) & (Resume.candidate_id == candidate_id)
+            (Resume.id == resume_id) & (Resume.candidate_id == candidate.id)
         )
     ).first()
+    
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
 
     resume_path = Path(resume.storage_path)
     if not resume_path.exists():
-        raise HTTPException(status_code=404, detail="Resume file not found on disk")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume file not found on disk"
+        )
 
-    # Use inline disposition to open in browser, not download
     return FileResponse(
         resume_path,
-        media_type=resume.content_type or "application/pdf",
-        filename=resume.filename,
-        headers={"Content-Disposition": "inline"}
+        media_type=resume.content_type or "application/octet-stream",
+        filename=resume.filename
     )
 
 
-# ---------- Role-fit scoring (placeholder AI) ----------
+# ============================================================================
+# APPLICATIONS MANAGEMENT
+# ============================================================================
 
+@router.get("/me/applications", response_model=list[ApplicationListRead])
+def list_my_applications(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Get all job applications for authenticated candidate."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    applications = session.exec(
+        select(Application).where(Application.candidate_id == candidate.id)
+    ).all()
+    
+    result = []
+    for app in applications:
+        job = session.get(JobPost, app.job_post_id)
+        company = session.get(job.company) if job else None
+        result.append(ApplicationListRead(
+            id=app.id,
+            job_post_id=app.job_post_id,
+            job_title=job.title if job else "Unknown",
+            company_name=company.company_name if company else "Unknown",
+            status=app.status,
+            match_score=app.match_score,
+            applied_at=app.applied_at.isoformat()
+        ))
+    
+    return result
+
+
+# ============================================================================
+# MATCH SCORING FOR JOB ROLES
+# ============================================================================
 
 @router.post("/{candidate_id}/role-fit", response_model=RoleFitResponse)
 def compute_role_fit(
     candidate_id: int,
     req: RoleFitRequest,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session)
 ):
+    """Compute role-fit score for a candidate (POC/Rule-based scoring)."""
     candidate = session.exec(
         select(Candidate).where(Candidate.id == candidate_id)
     ).first()
     if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
 
     # base score
     score = 50

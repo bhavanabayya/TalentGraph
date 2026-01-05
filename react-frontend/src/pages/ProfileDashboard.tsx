@@ -1,0 +1,280 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { preferencesAPI, CandidateProfileWithPreferences } from '../api/client';
+import '../styles/ProfileDashboard.css';
+
+const ProfileDashboard: React.FC = () => {
+  const [profile, setProfile] = useState<CandidateProfileWithPreferences | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const res = await preferencesAPI.getProfileWithPreferences();
+      setProfile(res.data);
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load profile');
+      console.error('Error fetching profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="profile-dashboard loading">Loading your profile...</div>;
+  }
+
+  if (!profile) {
+    return (
+      <div className="profile-dashboard">
+        <div className="error-message">Profile not found</div>
+      </div>
+    );
+  }
+
+  const activePreferences = profile.job_preferences?.filter((p) => p.is_active) || [];
+  const totalPreferences = profile.job_preferences?.length || 0;
+
+  return (
+    <div className="profile-dashboard">
+      {/* Profile Header */}
+      <div className="profile-header">
+        <div className="profile-info">
+          <div className="profile-avatar">
+            {profile.profile_picture_path ? (
+              <img src={profile.profile_picture_path} alt={profile.name} />
+            ) : (
+              <div className="avatar-placeholder">{profile.name.charAt(0)}</div>
+            )}
+          </div>
+          <div className="profile-details">
+            <h1>{profile.name}</h1>
+            {profile.location && <p className="location">📍 {profile.location}</p>}
+            {profile.summary && <p className="summary">{profile.summary}</p>}
+            <div className="profile-meta">
+              {profile.work_type && <span className="meta-tag">💼 {profile.work_type}</span>}
+              {profile.availability && <span className="meta-tag">⏰ {profile.availability}</span>}
+            </div>
+          </div>
+        </div>
+        <button
+          className="btn-manage-prefs"
+          onClick={() => navigate('/job-preferences')}
+        >
+          Manage Preferences
+        </button>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+
+      {/* Preferences Overview */}
+      <div className="preferences-overview">
+        <div className="overview-card">
+          <h3>Total Profiles</h3>
+          <div className="overview-number">{totalPreferences}</div>
+        </div>
+        <div className="overview-card">
+          <h3>Active Profiles</h3>
+          <div className="overview-number">{activePreferences.length}</div>
+        </div>
+      </div>
+
+      {/* Preferences Section */}
+      <div className="preferences-section">
+        <div className="section-header">
+          <h2>Your Job Preference Profiles</h2>
+          <button
+            className="btn-primary"
+            onClick={() => navigate('/job-preferences')}
+          >
+            + New Preference
+          </button>
+        </div>
+
+        {totalPreferences === 0 ? (
+          <div className="empty-state">
+            <h3>No job preferences yet</h3>
+            <p>Create job preference profiles to match with opportunities tailored to your interests.</p>
+            <button
+              className="btn-primary-large"
+              onClick={() => navigate('/job-preferences')}
+            >
+              Create Your First Preference
+            </button>
+          </div>
+        ) : (
+          <div className="preferences-container">
+            {profile.job_preferences?.map((pref, index) => (
+              <div
+                key={pref.id}
+                className={`preference-item ${pref.is_active ? 'active' : 'inactive'}`}
+              >
+                <div className="preference-number">Profile {index + 1}</div>
+
+                <div className="preference-header">
+                  <h3>{pref.preference_name}</h3>
+                  <span className={`status ${pref.is_active ? 'active' : 'inactive'}`}>
+                    {pref.is_active ? '✓ Active' : '○ Inactive'}
+                  </span>
+                </div>
+
+                <div className="preference-content">
+                  {/* Roles */}
+                  <div className="content-block">
+                    <div className="block-label">Roles</div>
+                    <div className="role-tags">
+                      {pref.roles?.map((role) => (
+                        <span key={role} className="role-tag">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="details-grid">
+                    {pref.seniority_level && (
+                      <div className="detail-item">
+                        <span className="detail-label">Seniority</span>
+                        <span className="detail-value">{pref.seniority_level}</span>
+                      </div>
+                    )}
+
+                    {(pref.years_experience_min || pref.years_experience_max) && (
+                      <div className="detail-item">
+                        <span className="detail-label">Experience</span>
+                        <span className="detail-value">
+                          {pref.years_experience_min}-{pref.years_experience_max} yrs
+                        </span>
+                      </div>
+                    )}
+
+                    {(pref.hourly_rate_min || pref.hourly_rate_max) && (
+                      <div className="detail-item">
+                        <span className="detail-label">Rate</span>
+                        <span className="detail-value">
+                          ${pref.hourly_rate_min}-${pref.hourly_rate_max}/hr
+                        </span>
+                      </div>
+                    )}
+
+                    {pref.work_type && (
+                      <div className="detail-item">
+                        <span className="detail-label">Work Type</span>
+                        <span className="detail-value">{pref.work_type}</span>
+                      </div>
+                    )}
+
+                    {pref.availability && (
+                      <div className="detail-item">
+                        <span className="detail-label">Available</span>
+                        <span className="detail-value">{pref.availability}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Skills */}
+                  {pref.required_skills && pref.required_skills.length > 0 && (
+                    <div className="content-block">
+                      <div className="block-label">Required Skills ({pref.required_skills.length})</div>
+                      <div className="skill-tags">
+                        {pref.required_skills.map((skill) => (
+                          <span key={skill} className="skill-tag">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Locations */}
+                  {pref.location_preferences && pref.location_preferences.length > 0 && (
+                    <div className="content-block">
+                      <div className="block-label">Preferred Locations</div>
+                      <div className="location-tags">
+                        {pref.location_preferences.map((location) => (
+                          <span key={location} className="location-tag">
+                            📍 {location}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="preference-footer">
+                  <small>Created {pref.created_at ? new Date(pref.created_at).toLocaleDateString() : 'N/A'}</small>
+                  <button
+                    className="btn-view"
+                    onClick={() => navigate('/job-preferences')}
+                  >
+                    Edit Preference →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Statistics Section */}
+      {totalPreferences > 0 && (
+        <div className="statistics-section">
+          <h2>Preference Statistics</h2>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h4>Experience Range</h4>
+              <p>
+                {Math.min(
+                  ...(profile.job_preferences
+                    ?.filter((p) => p.years_experience_min)
+                    .map((p) => p.years_experience_min || 0) || [0])
+                )}{' '}
+                -{' '}
+                {Math.max(
+                  ...(profile.job_preferences
+                    ?.filter((p) => p.years_experience_max)
+                    .map((p) => p.years_experience_max || 0) || [0])
+                )}{' '}
+                years
+              </p>
+            </div>
+            <div className="stat-card">
+              <h4>Rate Range</h4>
+              <p>
+                ${Math.min(
+                  ...(profile.job_preferences
+                    ?.filter((p) => p.hourly_rate_min)
+                    .map((p) => p.hourly_rate_min || 0) || [0])
+                )}{' '}
+                - ${Math.max(
+                  ...(profile.job_preferences
+                    ?.filter((p) => p.hourly_rate_max)
+                    .map((p) => p.hourly_rate_max || 0) || [0])
+                )}/hr
+              </p>
+            </div>
+            <div className="stat-card">
+              <h4>Total Skills</h4>
+              <p>
+                {new Set(
+                  profile.job_preferences
+                    ?.flatMap((p) => p.required_skills || [])
+                ).size || 0}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProfileDashboard;

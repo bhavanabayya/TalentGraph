@@ -1,15 +1,44 @@
 from typing import Optional, List
+from datetime import datetime
 from sqlmodel import SQLModel, Field, Relationship
 
 
-# --- Core skill & certification models ---
+# ============================================================================
+# USER AUTHENTICATION & AUTHORIZATION
+# ============================================================================
 
+class User(SQLModel, table=True):
+    """Universal user table for both Candidates and Company Employees"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(unique=True, index=True)
+    password_hash: str
+    user_type: str  # "candidate" or "company"
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    candidate: Optional["Candidate"] = Relationship(back_populates="user")
+    company_user: Optional["CompanyUser"] = Relationship(back_populates="user")
+
+
+class OTPStore(SQLModel, table=True):
+    """OTP storage for multi-factor auth"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(index=True)
+    code: str
+    expires_at: int  # Unix timestamp
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================================
+# CANDIDATE SIDE
+# ============================================================================
 
 class Skill(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     candidate_id: int = Field(foreign_key="candidate.id")
     name: str
     level: Optional[str] = None  # e.g., Beginner / Intermediate / Expert
+    category: Optional[str] = None  # "technical", "soft", etc.
 
     candidate: "Candidate" = Relationship(back_populates="skills")
 
@@ -24,12 +53,170 @@ class Certification(SQLModel, table=True):
     candidate: "Candidate" = Relationship(back_populates="certifications")
 
 
-# --- Ontology: Authors / Products / Roles ---
+class Resume(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidate_id: int = Field(foreign_key="candidate.id")
+    filename: str
+    content_type: Optional[str] = None
+    storage_path: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
+    candidate: "Candidate" = Relationship(back_populates="resumes")
+
+
+class CandidateJobPreference(SQLModel, table=True):
+    """Job preference profile created by candidate for different roles/products"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidate_id: int = Field(foreign_key="candidate.id")
+    
+    # Product ontology links
+    product_author_id: int = Field(foreign_key="productauthor.id")  # e.g., Oracle
+    product_id: int = Field(foreign_key="product.id")  # e.g., Oracle Fusion
+    
+    # Roles (JSON array of role names, e.g., ["Oracle Fusion Functional Consultant", "Oracle Fusion Technical Consultant"])
+    roles: str  # JSON array
+    
+    # Job preferences specific to this profile
+    seniority_level: Optional[str] = None  # Junior / Mid / Senior
+    years_experience_min: Optional[int] = None
+    years_experience_max: Optional[int] = None
+    hourly_rate_min: Optional[float] = None
+    hourly_rate_max: Optional[float] = None
+    
+    # Required skills for this preference (JSON array)
+    required_skills: Optional[str] = None
+    
+    # Work preferences
+    work_type: Optional[str] = None  # Remote / On-site / Hybrid
+    location_preferences: Optional[str] = None  # JSON array of locations
+    
+    # Availability
+    availability: Optional[str] = None  # Immediately / 2 weeks / 1 month
+    
+    # Metadata
+    is_active: bool = True  # Can deactivate without deleting
+    preference_name: Optional[str] = None  # e.g., "Oracle Fusion - Senior Role"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    candidate: "Candidate" = Relationship(back_populates="job_preferences")
+    product_author: "ProductAuthor" = Relationship()
+    product: "Product" = Relationship()
+
+
+class Candidate(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", unique=True)
+    
+    name: str
+    location: Optional[str] = None
+    profile_picture_path: Optional[str] = None
+    summary: Optional[str] = None
+    
+    # General preferences (used for broader matching)
+    work_type: Optional[str] = None  # Remote / On-site / Hybrid
+    availability: Optional[str] = None  # e.g., "Immediately", "2 weeks", "1 month"
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    user: Optional[User] = Relationship(back_populates="candidate")
+    skills: List[Skill] = Relationship(back_populates="candidate")
+    certifications: List[Certification] = Relationship(back_populates="candidate")
+    resumes: List[Resume] = Relationship(back_populates="candidate")
+    job_preferences: List[CandidateJobPreference] = Relationship(back_populates="candidate")
+    swipes_given: List["Swipe"] = Relationship(back_populates="candidate")
+    applications: List["Application"] = Relationship(back_populates="candidate")
+
+
+# ============================================================================
+# COMPANY SIDE
+# ============================================================================
+
+class CompanyAccount(SQLModel, table=True):
+    """Company/organization account"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    company_name: str
+    domain: Optional[str] = None  # e.g., "example.com"
+    hq_location: Optional[str] = None
+    description: Optional[str] = None
+    logo_path: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    company_users: List["CompanyUser"] = Relationship(back_populates="company")
+    job_posts: List["JobPost"] = Relationship(back_populates="company")
+
+
+class CompanyUser(SQLModel, table=True):
+    """Employee of a company with role-based permissions"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", unique=True)
+    company_id: int = Field(foreign_key="companyaccount.id")
+    
+    first_name: str
+    last_name: str
+    role: str  # "HR", "TEAM_LEAD", "RECRUITER", "ADMIN"
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    user: Optional[User] = Relationship(back_populates="company_user")
+    company: CompanyAccount = Relationship(back_populates="company_users")
+    swipes_given: List["Swipe"] = Relationship(back_populates="company_user")
+
+
+class JobPost(SQLModel, table=True):
+    """Job posting by a company"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    company_id: int = Field(foreign_key="companyaccount.id")
+    
+    title: str
+    description: Optional[str] = None
+    product_author: str  # e.g., "Oracle"
+    product: str  # e.g., "Oracle EBS"
+    role: str  # e.g., "Oracle Fusion Functional Consultant"
+    seniority: Optional[str] = None  # Junior / Mid / Senior
+    
+    location: Optional[str] = None
+    work_type: Optional[str] = None  # Remote / On-site / Hybrid
+    min_rate: Optional[float] = None
+    max_rate: Optional[float] = None
+    required_skills: Optional[str] = None  # JSON array of skill names
+    nice_to_have_skills: Optional[str] = None  # JSON array
+    
+    status: str = "active"  # active, closed, archived
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    company: CompanyAccount = Relationship(back_populates="job_posts")
+    swipes: List["Swipe"] = Relationship(back_populates="job_post")
+    applications: List["Application"] = Relationship(back_populates="job_post")
+
+
+class Swipe(SQLModel, table=True):
+    """Like/Pass interaction between candidate and company on a job"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidate_id: int = Field(foreign_key="candidate.id")
+    job_post_id: int = Field(foreign_key="jobpost.id")
+    company_user_id: Optional[int] = Field(foreign_key="companyuser.id")  # Who swiped from company side
+    
+    action: str  # "like", "pass", "interview_scheduled", "hired", "rejected"
+    match_score: Optional[float] = None  # 0-100
+    match_explanation: Optional[str] = None  # JSON details
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    candidate: Candidate = Relationship(back_populates="swipes_given")
+    job_post: JobPost = Relationship(back_populates="swipes")
+    company_user: Optional[CompanyUser] = Relationship(back_populates="swipes_given")
+
+
+# ============================================================================
+# ONTOLOGY: Authors / Products / Roles (for Oracle POC)
+# ============================================================================
 
 class ProductAuthor(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str  # Oracle / SAP / Workday / Salesforce / Microsoft / Other
+    name: str  # "Oracle", "SAP", etc.
     code: Optional[str] = None
 
     products: List["Product"] = Relationship(back_populates="author")
@@ -38,7 +225,7 @@ class ProductAuthor(SQLModel, table=True):
 class Product(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     author_id: int = Field(foreign_key="productauthor.id")
-    name: str  # e.g. E-Business Suite, SaaS, PeopleSoft, JDE
+    name: str  # e.g., "Oracle EBS", "Oracle Fusion"
     code: Optional[str] = None
 
     author: ProductAuthor = Relationship(back_populates="products")
@@ -48,66 +235,27 @@ class Product(SQLModel, table=True):
 class JobRole(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     product_id: int = Field(foreign_key="product.id")
-    name: str  # e.g. Oracle Fusion Functional Consultant
-    seniority: Optional[str] = None  # e.g. Junior / Mid / Senior
+    name: str  # e.g., "Oracle Fusion Functional Consultant"
+    seniority: Optional[str] = None  # Junior / Mid / Senior
     description: Optional[str] = None
 
     product: Product = Relationship(back_populates="roles")
 
 
-# --- Resume model ---
+# ============================================================================
+# APPLICATION TRACKING
+# ============================================================================
 
-
-class Resume(SQLModel, table=True):
+class Application(SQLModel, table=True):
+    """Candidate application to a job posting"""
     id: Optional[int] = Field(default=None, primary_key=True)
     candidate_id: int = Field(foreign_key="candidate.id")
-    filename: str
-    content_type: Optional[str] = None
-    storage_path: str
-
-    candidate: "Candidate" = Relationship(back_populates="resumes")
-
-
-# --- Candidate model ---
-
-
-class Candidate(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    email: str
-    location: Optional[str] = None
-
-    # Profile picture
-    profile_picture_path: Optional[str] = None
-
-    # vendor / product
-    product_author: Optional[str] = None
-    product: Optional[str] = None
-
-    primary_role: Optional[str] = None
-    summary: Optional[str] = None
-    years_experience: Optional[int] = None
-    rate_min: Optional[float] = None
-    rate_max: Optional[float] = None
-    availability: Optional[str] = None
-
-    # work type & location preferences
-    work_type: Optional[str] = None  # Remote / Full-time / Hybrid
-    location_preference_1: Optional[str] = None
-    location_preference_2: Optional[str] = None
-    location_preference_3: Optional[str] = None
+    job_post_id: int = Field(foreign_key="jobpost.id")
     
-    # job roles (JSON array stored as string)
-    job_roles: Optional[str] = None  # JSON-serialized list of role names
-
-    # legacy preference fields (deprecated, kept for backward compatibility)
-    preference_1: Optional[str] = None
-    preference_2: Optional[str] = None
-    preference_3: Optional[str] = None
-
-    # future: link to ontology role
-    job_role_id: Optional[int] = Field(default=None, foreign_key="jobrole.id")
-
-    skills: List[Skill] = Relationship(back_populates="candidate")
-    certifications: List[Certification] = Relationship(back_populates="candidate")
-    resumes: List[Resume] = Relationship(back_populates="candidate")
+    status: str = "submitted"  # submitted, reviewing, interviewed, offered, rejected, withdrawn
+    match_score: Optional[float] = None  # 0-100 at time of application
+    applied_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    candidate: Candidate = Relationship(back_populates="applications")
+    job_post: JobPost = Relationship(back_populates="applications")

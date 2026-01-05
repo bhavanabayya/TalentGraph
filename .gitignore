@@ -20,10 +20,8 @@ ENV/
 !.env.example
 
 # =========================
-# FastAPI / Streamlit
+# FastAPI
 # =========================
-.streamlit/
-.streamlit/secrets.toml
 
 # =========================
 # Database

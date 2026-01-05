@@ -1,0 +1,446 @@
+/**
+ * API client with Axios + token management
+ */
+
+import axios, { AxiosInstance } from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+
+export interface SignUpRequest {
+  email: string;
+  password: string;
+  user_type: 'candidate' | 'company';
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface SendOTPRequest {
+  email: string;
+}
+
+export interface VerifyOTPRequest {
+  email: string;
+  code: string;
+}
+
+export interface VerifyOTPResponse {
+  access_token: string;
+  token_type: string;
+  user_id: number;
+  user_type: string;
+}
+
+export interface CandidateProfile {
+  id?: number;
+  user_id?: number;
+  name: string;
+  location?: string;
+  profile_picture_path?: string;
+  product_author?: string;
+  product?: string;
+  primary_role?: string;
+  summary?: string;
+  years_experience?: number;
+  rate_min?: number;
+  rate_max?: number;
+  availability?: string;
+  work_type?: string;
+  location_preference_1?: string;
+  location_preference_2?: string;
+  location_preference_3?: string;
+  skills?: Array<{ id: number; name: string; level?: string; category?: string }>;
+  certifications?: any[];
+  resumes?: any[];
+  applications?: any[];
+}
+
+export interface Skill {
+  id?: number;
+  name: string;
+  level?: string;
+  category?: string;
+}
+
+export interface Certification {
+  id?: number;
+  name: string;
+  issuer?: string;
+  year?: number;
+}
+
+export interface Resume {
+  id: number;
+  filename: string;
+  created_at: string;
+}
+
+export interface JobPreference {
+  id?: number;
+  candidate_id?: number;
+  product_author_id: number;
+  product_id: number;
+  roles: string[];
+  seniority_level?: string;
+  years_experience_min?: number;
+  years_experience_max?: number;
+  hourly_rate_min?: number;
+  hourly_rate_max?: number;
+  required_skills?: string[];
+  work_type?: string;
+  location_preferences?: string[];
+  availability?: string;
+  preference_name?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CandidateProfileWithPreferences {
+  id: number;
+  user_id: number;
+  name: string;
+  location?: string;
+  profile_picture_path?: string;
+  summary?: string;
+  work_type?: string;
+  availability?: string;
+  created_at: string;
+  updated_at: string;
+  job_preferences: JobPreference[];
+}
+
+export interface JobPost {
+  id: number;
+  company_id: number;
+  title: string;
+  description?: string;
+  product_author: string;
+  product: string;
+  role: string;
+  seniority?: string;
+  location?: string;
+  work_type?: string;
+  min_rate?: number;
+  max_rate?: number;
+  required_skills?: string[];
+  nice_to_have_skills?: string[];
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CandidateCard {
+  candidate_id: number;
+  name: string;
+  location?: string;
+  years_experience?: number;
+  product_author?: string;
+  product?: string;
+  primary_role?: string;
+  rate_min?: number;
+  rate_max?: number;
+  availability?: string;
+  skills: string[];
+  match_score: number;
+  match_explanation: {
+    matched_skills: string[];
+    missing_skills: string[];
+    rate_fit: boolean;
+    location_fit: boolean;
+    overall_score: number;
+  };
+}
+
+export interface CandidateFeedResponse {
+  candidates: CandidateCard[];
+  total_count: number;
+}
+
+export interface Application {
+  id: number;
+  job_post_id: number;
+  job_title: string;
+  company_name: string;
+  status: string;
+  match_score?: number;
+  applied_at: string;
+}
+
+export interface RankingItem {
+  candidate_id: number;
+  name: string;
+  rank: number;
+  score: number;
+  explanation: any;
+}
+
+// Create Axios instance
+const apiClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Token management
+export const getToken = (): string | null => {
+  return localStorage.getItem('access_token');
+};
+
+export const setToken = (token: string): void => {
+  localStorage.setItem('access_token', token);
+};
+
+export const removeToken = (): void => {
+  localStorage.removeItem('access_token');
+  console.log('[API] Token removed from localStorage');
+};
+
+// Request interceptor for auth
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log(`[API-REQUEST] ${config.method?.toUpperCase()} ${config.url} - Token attached`);
+    } else {
+      console.log(`[API-REQUEST] ${config.method?.toUpperCase()} ${config.url} - No token`);
+    }
+    return config;
+  },
+  (error) => {
+    console.error('[API-REQUEST-ERROR]', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log(`[API-RESPONSE] ${response.status} - ${response.config.url}`);
+    return response;
+  },
+  (error) => {
+    console.error(`[API-RESPONSE-ERROR] ${error.config?.url} - ${error.response?.status} - ${error.response?.data?.detail || error.message}`);
+    return Promise.reject(error);
+  }
+);
+
+// ============================================================================
+// AUTH API
+// ============================================================================
+export const authAPI = {
+  signup: (data: SignUpRequest) => {
+    console.log(`[AUTH-API] Signup attempt - email: ${data.email}, type: ${data.user_type}`);
+    return apiClient.post('/auth/signup', data).then(res => {
+      console.log('[AUTH-API] Signup successful');
+      return res;
+    });
+  },
+
+  login: (data: LoginRequest) => {
+    console.log(`[AUTH-API] Login attempt - email: ${data.email}`);
+    return apiClient.post('/auth/login', data).then(res => {
+      console.log('[AUTH-API] Login successful - returning response');
+      return res;
+    });
+  },
+
+  sendOTP: (data: SendOTPRequest) => {
+    console.log(`[AUTH-API] Sending OTP to ${data.email}`);
+    return apiClient.post('/auth/send-otp', data).then(res => {
+      console.log(`[AUTH-API] OTP sent successfully`);
+      return res;
+    });
+  },
+
+  verifyOTP: (data: VerifyOTPRequest) => {
+    console.log(`[AUTH-API] Verifying OTP for ${data.email}`);
+    return apiClient.post<VerifyOTPResponse>('/auth/verify-otp', data).then(res => {
+      console.log('[AUTH-API] OTP verified successfully - token received');
+      return res;
+    });
+  },
+};
+
+// ============================================================================
+// CANDIDATE API
+// ============================================================================
+export const candidateAPI = {
+  // Profile
+  getMe: () => {
+    console.log('[CANDIDATE-API] Fetching current candidate profile');
+    return apiClient.get<CandidateProfile>('/candidates/me').then(res => {
+      console.log('[CANDIDATE-API] Profile fetched successfully');
+      return res;
+    });
+  },
+
+  updateMe: (data: Partial<CandidateProfile>) =>
+    apiClient.put<CandidateProfile>('/candidates/me', data),
+
+  getById: (candidateId: number) =>
+    apiClient.get<CandidateProfile>(`/candidates/${candidateId}`),
+
+  // Skills
+  addSkill: (skill: Skill) =>
+    apiClient.post<Skill>('/candidates/me/skills', skill),
+
+  listSkills: () =>
+    apiClient.get<Skill[]>('/candidates/me/skills'),
+
+  removeSkill: (skillId: number) =>
+    apiClient.delete(`/candidates/me/skills/${skillId}`),
+
+  // Certifications
+  addCertification: (cert: Certification) =>
+    apiClient.post<Certification>('/candidates/me/certifications', cert),
+
+  listCertifications: () =>
+    apiClient.get<Certification[]>('/candidates/me/certifications'),
+
+  // Resumes
+  uploadResume: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post<Resume>('/candidates/me/resumes', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  listResumes: () =>
+    apiClient.get<Resume[]>('/candidates/me/resumes'),
+
+  downloadResume: (resumeId: number) =>
+    apiClient.get(`/candidates/me/resumes/${resumeId}/download`, {
+      responseType: 'blob',
+    }),
+
+  // Applications
+  listApplications: () =>
+    apiClient.get<Application[]>('/candidates/me/applications'),
+
+  // Matching
+  getRoleFit: (candidateId: number, author: string, product: string, role: string) =>
+    apiClient.post(`/candidates/${candidateId}/role-fit`, {
+      product_author: author,
+      product,
+      job_role: role,
+    }),
+};
+
+// ============================================================================
+// JOB ROLES API (Ontology)
+// ============================================================================
+export const jobRolesAPI = {
+  getAll: () =>
+    apiClient.get('/job-roles/'),
+
+  getAuthors: () =>
+    apiClient.get('/job-roles/authors'),
+
+  getProducts: (author: string) =>
+    apiClient.get('/job-roles/products', { params: { author } }),
+
+  getRoles: (author: string, product: string) =>
+    apiClient.get('/job-roles/roles', { params: { author, product } }),
+
+  getSkills: () =>
+    apiClient.get('/job-roles/skills'),
+};
+
+// ============================================================================
+// COMPANY API
+// ============================================================================
+export const companyAPI = {
+  createAccount: (data: any) =>
+    apiClient.post('/company/create-account', data),
+
+  getMe: () =>
+    apiClient.get('/company/me'),
+
+  getProfile: (companyId: number) =>
+    apiClient.get(`/company/${companyId}`),
+
+  addEmployee: (data: any) =>
+    apiClient.post('/company/users', data),
+
+  listEmployees: (companyId: number) =>
+    apiClient.get(`/company/${companyId}/employees`),
+};
+
+// ============================================================================
+// JOB PREFERENCES API
+// ============================================================================
+export const preferencesAPI = {
+  create: (data: JobPreference) =>
+    apiClient.post<JobPreference>('/preferences/create', data),
+
+  getMyPreferences: () =>
+    apiClient.get<JobPreference[]>('/preferences/my-preferences'),
+
+  getProfileWithPreferences: () =>
+    apiClient.get<CandidateProfileWithPreferences>('/preferences/my-profile'),
+
+  getById: (preferenceId: number) =>
+    apiClient.get<JobPreference>(`/preferences/${preferenceId}`),
+
+  update: (preferenceId: number, data: Partial<JobPreference>) =>
+    apiClient.put<JobPreference>(`/preferences/${preferenceId}`, data),
+
+  delete: (preferenceId: number) =>
+    apiClient.delete(`/preferences/${preferenceId}`),
+};
+
+// ============================================================================
+// JOBS API
+// ============================================================================
+export const jobsAPI = {
+  create: (data: Partial<JobPost>) =>
+    apiClient.post<JobPost>('/jobs/create', data),
+
+  list: () =>
+    apiClient.get<JobPost[]>('/jobs/'),
+
+  get: (jobId: number) =>
+    apiClient.get<JobPost>(`/jobs/${jobId}`),
+
+  update: (jobId: number, data: Partial<JobPost>) =>
+    apiClient.patch<JobPost>(`/jobs/${jobId}`, data),
+
+  delete: (jobId: number) =>
+    apiClient.delete(`/jobs/${jobId}`),
+};
+
+// ============================================================================
+// SWIPES API
+// ============================================================================
+export const swipesAPI = {
+  getCandidateFeed: (jobId: number, limit: number = 10, offset: number = 0) =>
+    apiClient.get<CandidateFeedResponse>(`/swipes/feed/${jobId}`, {
+      params: { limit, offset },
+    }),
+
+  like: (candidateId: number, jobId: number) =>
+    apiClient.post('/swipes/like', {
+      candidate_id: candidateId,
+      job_post_id: jobId,
+    }),
+
+  pass: (candidateId: number, jobId: number) =>
+    apiClient.post('/swipes/pass', {
+      candidate_id: candidateId,
+      job_post_id: jobId,
+    }),
+
+  getShortlist: (jobId: number) =>
+    apiClient.get<CandidateCard[]>(`/swipes/shortlist/${jobId}`),
+
+  getRanking: (jobId: number) =>
+    apiClient.get<RankingItem[]>(`/swipes/ranking/${jobId}`),
+};
+
+export default apiClient;
