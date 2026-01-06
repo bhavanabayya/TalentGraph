@@ -69,39 +69,37 @@ class CandidateJobPreference(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     candidate_id: int = Field(foreign_key="candidate.id")
     
-    # Product ontology links
-    product_author_id: int = Field(foreign_key="productauthor.id")  # e.g., Oracle
-    product_id: int = Field(foreign_key="product.id")  # e.g., Oracle Fusion
+    # Profile name/label for this preference
+    preference_name: Optional[str] = None  # e.g., "Oracle Fusion - Senior Role"
     
-    # Roles (JSON array of role names, e.g., ["Oracle Fusion Functional Consultant", "Oracle Fusion Technical Consultant"])
-    roles: str  # JSON array
+    # Product/Role selection
+    product: str  # e.g., "SaaS", "E-Business Suite"
+    primary_role: str  # e.g., "Oracle Fusion Functional Consultant"
     
     # Job preferences specific to this profile
-    seniority_level: Optional[str] = None  # Junior / Mid / Senior
-    years_experience_min: Optional[int] = None
-    years_experience_max: Optional[int] = None
-    hourly_rate_min: Optional[float] = None
-    hourly_rate_max: Optional[float] = None
-    
-    # Required skills for this preference (JSON array)
-    required_skills: Optional[str] = None
+    years_experience: Optional[int] = None
+    rate_min: Optional[float] = None
+    rate_max: Optional[float] = None
     
     # Work preferences
     work_type: Optional[str] = None  # Remote / On-site / Hybrid
-    location_preferences: Optional[str] = None  # JSON array of locations
+    location: Optional[str] = None
     
     # Availability
     availability: Optional[str] = None  # Immediately / 2 weeks / 1 month
     
+    # Professional summary for this profile
+    summary: Optional[str] = None
+    
+    # Required skills for this role (JSON: [{"name": "skill", "rating": 4}, ...])
+    required_skills: Optional[str] = None
+    
     # Metadata
     is_active: bool = True  # Can deactivate without deleting
-    preference_name: Optional[str] = None  # e.g., "Oracle Fusion - Senior Role"
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     candidate: "Candidate" = Relationship(back_populates="job_preferences")
-    product_author: "ProductAuthor" = Relationship()
-    product: "Product" = Relationship()
 
 
 class Candidate(SQLModel, table=True):
@@ -112,6 +110,15 @@ class Candidate(SQLModel, table=True):
     location: Optional[str] = None
     profile_picture_path: Optional[str] = None
     summary: Optional[str] = None
+    
+    # Product/Role Focus
+    product: Optional[str] = None  # e.g., "SaaS", "E-Business Suite"
+    primary_role: Optional[str] = None  # e.g., "Oracle Fusion Functional Consultant"
+    
+    # Experience and Rate
+    years_experience: Optional[int] = None  # Years of experience
+    rate_min: Optional[float] = None  # Minimum hourly/annual rate
+    rate_max: Optional[float] = None  # Maximum hourly/annual rate
     
     # General preferences (used for broader matching)
     work_type: Optional[str] = None  # Remote / On-site / Hybrid

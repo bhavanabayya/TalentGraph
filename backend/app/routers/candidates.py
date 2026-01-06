@@ -47,10 +47,24 @@ def get_my_profile(
     ).first()
     
     if not candidate:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Candidate profile not found"
+        # Create a default candidate profile if it doesn't exist
+        user = session.exec(
+            select(User).where(User.id == user_id)
+        ).first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        candidate = Candidate(
+            user_id=user_id,
+            name=user.email.split('@')[0]  # Use part of email as default name
         )
+        session.add(candidate)
+        session.commit()
+        session.refresh(candidate)
     
     return candidate
 

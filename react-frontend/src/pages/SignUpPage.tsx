@@ -52,16 +52,34 @@ const SignUpPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await authAPI.signup({
+      const response = await authAPI.signup({
         email,
         password,
         user_type: userType,
       });
 
+      if (response.data?.ok === false) {
+        setError(response.data?.message || 'Signup failed');
+        return;
+      }
+
       setSuccess('Account created! Redirecting to sign in...');
       setTimeout(() => navigate('/signin'), 2000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Signup failed');
+      console.error('[SIGNUP] Error:', err);
+      
+      // Try to extract error message from various sources
+      let errorMsg = 'Signup failed';
+      
+      if (err.response?.data?.detail) {
+        errorMsg = err.response.data.detail;
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

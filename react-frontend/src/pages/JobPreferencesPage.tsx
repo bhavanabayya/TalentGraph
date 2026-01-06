@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { preferencesAPI, jobRolesAPI, JobPreference } from '../api/client';
 import '../styles/JobPreferences.css';
-
-interface ProductAuthor {
-  id: number;
-  name: string;
-}
 
 interface Product {
   id: number;
@@ -21,28 +17,31 @@ interface JobRole {
 }
 
 interface OntologyData {
-  authors: ProductAuthor[];
-  products: { [key: string]: Product[] };
+  products: Product[];
   roles: { [key: string]: JobRole[] };
   skills: string[];
+  oracleAuthorId: number;
 }
 
 const JobPreferencesPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [preferences, setPreferences] = useState<JobPreference[]>([]);
   const [ontology, setOntology] = useState<OntologyData>({
-    authors: [],
-    products: {},
+    products: [],
     roles: {},
     skills: [],
+    oracleAuthorId: 1, // Oracle is typically ID 1
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<JobPreference>({
-    product_author_id: 0,
+    product_author_id: 1, // Oracle only
     product_id: 0,
     roles: [],
     seniority_level: '',
@@ -65,6 +64,21 @@ const JobPreferencesPage: React.FC = () => {
     fetchData();
   }, []);
 
+  // Handle URL params for editing
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    const isNew = searchParams.get('new');
+    
+    if (editId && preferences.length > 0) {
+      const pref = preferences.find(p => p.id === Number(editId));
+      if (pref) {
+        handleEdit(pref);
+      }
+    } else if (isNew) {
+      setShowForm(true);
+    }
+  }, [searchParams, preferences]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -72,15 +86,20 @@ const JobPreferencesPage: React.FC = () => {
       const prefsRes = await preferencesAPI.getMyPreferences();
       setPreferences(prefsRes.data);
 
-      // Fetch ontology data
+      // Fetch ontology data - Oracle products and roles
       const authorsRes = await jobRolesAPI.getAuthors();
+      const oracleAuthor = authorsRes.data.find((a: any) => a.name === 'Oracle');
+      const oracleId = oracleAuthor?.id || 1;
+
+      // Get Oracle products
+      const productsRes = await jobRolesAPI.getProducts('Oracle');
       const skillsRes = await jobRolesAPI.getSkills();
 
       setOntology({
-        authors: authorsRes.data,
-        products: {},
+        products: productsRes.data,
         roles: {},
         skills: skillsRes.data,
+        oracleAuthorId: oracleId,
       });
 
       setError('');
@@ -92,33 +111,15 @@ const JobPreferencesPage: React.FC = () => {
     }
   };
 
-  const handleAuthorChange = async (authorId: number) => {
-    setFormData({ ...formData, product_author_id: authorId, product_id: 0, roles: [] });
-    try {
-      const author = ontology.authors.find((a) => a.id === authorId);
-      if (author) {
-        const productsRes = await jobRolesAPI.getProducts(author.name);
-        setOntology({
-          ...ontology,
-          products: { ...ontology.products, [author.name]: productsRes.data },
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching products:', err);
-    }
-  };
-
   const handleProductChange = async (productId: number) => {
     setFormData({ ...formData, product_id: productId, roles: [] });
     try {
-      const author = ontology.authors.find((a) => a.id === formData.product_author_id);
-      const product = ontology.products[author?.name || '']?.find((p) => p.id === productId);
-
-      if (author && product) {
-        const rolesRes = await jobRolesAPI.getRoles(author.name, product.name);
+      const product = ontology.products.find((p) => p.id === productId);
+      if (product) {
+        const rolesRes = await jobRolesAPI.getRoles('Oracle', product.name);
         setOntology({
           ...ontology,
-          roles: { ...ontology.roles, [`${author.name}-${product.name}`]: rolesRes.data },
+          roles: { ...ontology.roles, [product.name]: rolesRes.data },
         });
       }
     } catch (err) {
@@ -127,11 +128,9 @@ const JobPreferencesPage: React.FC = () => {
   };
 
   const handleRoleToggle = (roleId: number) => {
-    const author = ontology.authors.find((a) => a.id === formData.product_author_id);
-    const product = ontology.products[author?.name || '']?.find((p) => p.id === formData.product_id);
-
-    if (author && product) {
-      const role = ontology.roles[`${author.name}-${product.name}`]?.find((r) => r.id === roleId);
+    const product = ontology.products.find((p) => p.id === formData.product_id);
+    if (product) {
+      const role = ontology.roles[product.name]?.find((r) => r.id === roleId);
       if (role) {
         const isSelected = formData.roles.includes(role.name);
         if (isSelected) {
@@ -188,12 +187,16 @@ const JobPreferencesPage: React.FC = () => {
     try {
       if (editingId) {
         await preferencesAPI.update(editingId, formData);
+        setSuccessMessage('Profile updated successfully');
       } else {
         await preferencesAPI.create(formData);
+        setSuccessMessage('Profile created successfully');
       }
       await fetchData();
       resetForm();
       setShowForm(false);
+      navigate('/profile-dashboard');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to save preference');
     }
@@ -208,15 +211,17 @@ const JobPreferencesPage: React.FC = () => {
   const handleDelete = async (preferenceId: number) => {
     try {
       await preferencesAPI.delete(preferenceId);
+      setSuccessMessage('Profile deleted successfully');
       await fetchData();
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to delete preference');
+      setError(err.response?.data?.detail || 'Failed to delete profile');
     }
   };
 
   const resetForm = () => {
     setFormData({
-      product_author_id: 0,
+      product_author_id: 1,
       product_id: 0,
       roles: [],
       seniority_level: '',
@@ -239,67 +244,60 @@ const JobPreferencesPage: React.FC = () => {
     return <div className="preferences-page loading">Loading...</div>;
   }
 
-  const author = ontology.authors.find((a) => a.id === formData.product_author_id);
-  const product = ontology.products[author?.name || '']?.find((p) => p.id === formData.product_id);
+  const product = ontology.products.find((p) => p.id === formData.product_id);
 
   return (
     <div className="preferences-page">
       <div className="preferences-header">
-        <h1>Job Preferences</h1>
-        <p>Create and manage your job preferences by product, role, experience, and rate</p>
+        <h1>Oracle Profiles</h1>
+        <p>Create and manage your Oracle career profiles by product, role, experience, and rate</p>
         <button className="btn-primary" onClick={() => { resetForm(); setShowForm(!showForm); }}>
-          {showForm ? 'Cancel' : '+ Create New Preference'}
+          {showForm ? 'Cancel' : '+ Create New Profile'}
         </button>
       </div>
 
+      {successMessage && <div className="success-message">{successMessage}</div>}
       {error && <div className="error-message">{error}</div>}
 
       {showForm && (
         <form className="preferences-form" onSubmit={handleSubmit}>
           <div className="form-section">
-            <h2>{editingId ? 'Edit Preference' : 'New Job Preference'}</h2>
+            <h2>{editingId ? 'Edit Profile' : 'New Oracle Profile'}</h2>
 
-            {/* Product Selection */}
+            {/* Product Author - Oracle Only */}
             <div className="form-group">
-              <label>Product Author *</label>
+              <label>Product Vendor</label>
+              <input
+                type="text"
+                value="Oracle"
+                disabled
+                className="disabled-input"
+              />
+            </div>
+
+            {/* Oracle Product Selection */}
+            <div className="form-group">
+              <label>Product Type *</label>
               <select
-                value={formData.product_author_id}
-                onChange={(e) => handleAuthorChange(Number(e.target.value))}
+                value={formData.product_id}
+                onChange={(e) => handleProductChange(Number(e.target.value))}
                 required
               >
-                <option value="">Select Product (e.g., Oracle, SAP)</option>
-                {ontology.authors.map((author) => (
-                  <option key={author.id} value={author.id}>
-                    {author.name}
+                <option value="">Select Product</option>
+                {ontology.products.map((prod) => (
+                  <option key={prod.id} value={prod.id}>
+                    {prod.name}
                   </option>
                 ))}
               </select>
             </div>
-
-            {formData.product_author_id > 0 && (
-              <div className="form-group">
-                <label>Product *</label>
-                <select
-                  value={formData.product_id}
-                  onChange={(e) => handleProductChange(Number(e.target.value))}
-                  required
-                >
-                  <option value="">Select Product</option>
-                  {ontology.products[author?.name || '']?.map((prod) => (
-                    <option key={prod.id} value={prod.id}>
-                      {prod.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             {/* Role Selection */}
             {formData.product_id > 0 && (
               <div className="form-group">
                 <label>Roles (Select multiple) *</label>
                 <div className="roles-list">
-                  {ontology.roles[`${author?.name}-${product?.name}`]?.map((role) => (
+                  {ontology.roles[product?.name || '']?.map((role) => (
                     <label key={role.id} className="checkbox-label">
                       <input
                         type="checkbox"
@@ -315,7 +313,7 @@ const JobPreferencesPage: React.FC = () => {
 
             {/* Preference Name */}
             <div className="form-group">
-              <label>Preference Name (optional)</label>
+              <label>Profile Name (optional)</label>
               <input
                 type="text"
                 placeholder="e.g., Senior Oracle Fusion Consultant"
@@ -483,20 +481,17 @@ const JobPreferencesPage: React.FC = () => {
             {/* Availability */}
             <div className="form-group">
               <label>Availability</label>
-              <select
+              <input
+                type="text"
+                placeholder="e.g., Immediately, 2 weeks, Starting Jan 15, etc."
                 value={formData.availability || ''}
                 onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
-              >
-                <option value="">Select Availability</option>
-                <option value="Immediately">Immediately</option>
-                <option value="2 weeks">2 weeks</option>
-                <option value="1 month">1 month</option>
-              </select>
+              />
             </div>
 
             <div className="form-actions">
               <button type="submit" className="btn-primary">
-                {editingId ? 'Update Preference' : 'Save Preference'}
+                {editingId ? 'Update Profile' : 'Save Profile'}
               </button>
               <button
                 type="button"
@@ -513,11 +508,11 @@ const JobPreferencesPage: React.FC = () => {
         </form>
       )}
 
-      {/* Preferences List */}
+      {/* Profiles List */}
       <div className="preferences-list">
-        <h2>Your Job Preferences ({preferences.length})</h2>
+        <h2>Your Oracle Profiles ({preferences.length})</h2>
         {preferences.length === 0 ? (
-          <p className="empty-message">No preferences yet. Create one to get started!</p>
+          <p className="empty-message">No profiles yet. Create one to get started!</p>
         ) : (
           <div className="preferences-grid">
             {preferences.map((pref) => (
@@ -579,17 +574,17 @@ const JobPreferencesPage: React.FC = () => {
                 </div>
                 <div className="card-actions">
                   <button className="btn-edit" onClick={() => handleEdit(pref)}>
-                    Edit
+                    ✎ Edit
                   </button>
                   <button
                     className="btn-delete"
                     onClick={() => {
-                      if (window.confirm('Are you sure?')) {
+                      if (window.confirm('Are you sure you want to delete this profile?')) {
                         handleDelete(pref.id || 0);
                       }
                     }}
                   >
-                    Delete
+                    🗑 Delete
                   </button>
                 </div>
               </div>

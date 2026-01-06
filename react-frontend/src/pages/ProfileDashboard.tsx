@@ -7,6 +7,8 @@ const ProfileDashboard: React.FC = () => {
   const [profile, setProfile] = useState<CandidateProfileWithPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,6 +27,26 @@ const ProfileDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeletePreference = async (preferenceId: number) => {
+    try {
+      await preferencesAPI.delete(preferenceId);
+      setSuccessMessage('Profile deleted successfully');
+      setDeleteConfirm(null);
+      await fetchProfile();
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete profile');
+    }
+  };
+
+  const handleEditPreference = (preferenceId: number) => {
+    navigate(`/job-preferences?edit=${preferenceId}`);
+  };
+
+  const handleCreateNew = () => {
+    navigate('/job-preferences?new=true');
   };
 
   if (loading) {
@@ -64,14 +86,9 @@ const ProfileDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        <button
-          className="btn-manage-prefs"
-          onClick={() => navigate('/job-preferences')}
-        >
-          Manage Preferences
-        </button>
       </div>
 
+      {successMessage && <div className="success-message">{successMessage}</div>}
       {error && <div className="error-message">{error}</div>}
 
       {/* Preferences Overview */}
@@ -89,24 +106,24 @@ const ProfileDashboard: React.FC = () => {
       {/* Preferences Section */}
       <div className="preferences-section">
         <div className="section-header">
-          <h2>Your Job Preference Profiles</h2>
+          <h2>Your Oracle Profiles</h2>
           <button
             className="btn-primary"
-            onClick={() => navigate('/job-preferences')}
+            onClick={handleCreateNew}
           >
-            + New Preference
+            + New Profile
           </button>
         </div>
 
         {totalPreferences === 0 ? (
           <div className="empty-state">
-            <h3>No job preferences yet</h3>
-            <p>Create job preference profiles to match with opportunities tailored to your interests.</p>
+            <h3>No Oracle profiles yet</h3>
+            <p>Create your first Oracle profile to start matching with opportunities.</p>
             <button
               className="btn-primary-large"
-              onClick={() => navigate('/job-preferences')}
+              onClick={handleCreateNew}
             >
-              Create Your First Preference
+              Create Your First Profile
             </button>
           </div>
         ) : (
@@ -211,13 +228,41 @@ const ProfileDashboard: React.FC = () => {
 
                 <div className="preference-footer">
                   <small>Created {pref.created_at ? new Date(pref.created_at).toLocaleDateString() : 'N/A'}</small>
-                  <button
-                    className="btn-view"
-                    onClick={() => navigate('/job-preferences')}
-                  >
-                    Edit Preference →
-                  </button>
+                  <div className="action-buttons">
+                    <button
+                      className="btn-edit"
+                      onClick={() => handleEditPreference(pref.id)}
+                    >
+                      ✎ Edit
+                    </button>
+                    <button
+                      className="btn-delete"
+                      onClick={() => setDeleteConfirm(pref.id)}
+                    >
+                      🗑 Delete
+                    </button>
+                  </div>
                 </div>
+
+                {deleteConfirm === pref.id && (
+                  <div className="delete-confirmation">
+                    <p>Are you sure you want to delete this profile?</p>
+                    <div className="confirm-buttons">
+                      <button
+                        className="btn-confirm-yes"
+                        onClick={() => handleDeletePreference(pref.id)}
+                      >
+                        Yes, Delete
+                      </button>
+                      <button
+                        className="btn-confirm-no"
+                        onClick={() => setDeleteConfirm(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

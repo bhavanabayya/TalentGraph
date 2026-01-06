@@ -1,33 +1,20 @@
-"""
-Job preference management for candidates.
-Candidates can create multiple job preference profiles with different roles, rates, skills, etc.
-"""
-
-import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from datetime import datetime
+import json
 
 from ..database import get_session
-from ..models import Candidate, CandidateJobPreference, ProductAuthor, Product, User
-from ..schemas import (
-    CandidateJobPreferenceCreate,
-    CandidateJobPreferenceUpdate,
-    CandidateJobPreferenceRead,
-    CandidateReadWithPreferences,
-)
+from ..models import Candidate, CandidateJobPreference
+from ..schemas import JobPreferenceCreate, JobPreferenceUpdate, JobPreferenceRead
 from ..security import require_candidate
 
-router = APIRouter(prefix="/preferences", tags=["job-preferences"])
+
+router = APIRouter(prefix="/preferences", tags=["preferences"])
 
 
-# ============================================================================
-# PREFERENCE CRUD OPERATIONS
-# ============================================================================
-
-@router.post("/create", response_model=CandidateJobPreferenceRead)
+@router.post("/create", response_model=JobPreferenceRead)
 def create_job_preference(
-    preference: CandidateJobPreferenceCreate,
+    preference: JobPreferenceCreate,
     current_user: dict = Depends(require_candidate),
     session: Session = Depends(get_session)
 ):
@@ -45,61 +32,35 @@ def create_job_preference(
             detail="Candidate profile not found"
         )
     
-    # Verify product author and product exist
-    author = session.exec(
-        select(ProductAuthor).where(ProductAuthor.id == preference.product_author_id)
-    ).first()
-    if not author:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Product author not found"
-        )
-    
-    product = session.exec(
-        select(Product).where(
-            (Product.id == preference.product_id) & 
-            (Product.author_id == preference.product_author_id)
-        )
-    ).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Product not found for this author"
-        )
-    
     # Create job preference
     new_preference = CandidateJobPreference(
         candidate_id=candidate.id,
-        product_author_id=preference.product_author_id,
-        product_id=preference.product_id,
-        roles=json.dumps(preference.roles),  # Store as JSON
-        seniority_level=preference.seniority_level,
-        years_experience_min=preference.years_experience_min,
-        years_experience_max=preference.years_experience_max,
-        hourly_rate_min=preference.hourly_rate_min,
-        hourly_rate_max=preference.hourly_rate_max,
-        required_skills=json.dumps(preference.required_skills) if preference.required_skills else None,
+        product=preference.product,
+        primary_role=preference.primary_role,
+        years_experience=preference.years_experience,
+        rate_min=preference.rate_min,
+        rate_max=preference.rate_max,
         work_type=preference.work_type,
-        location_preferences=json.dumps(preference.location_preferences) if preference.location_preferences else None,
+        location=preference.location,
         availability=preference.availability,
-        preference_name=preference.preference_name or f"{author.name} - {product.name} Profile",
+        summary=preference.summary,
+        required_skills=json.dumps(preference.required_skills) if preference.required_skills else None,
+        preference_name=preference.preference_name or f"{preference.product} - {preference.primary_role}",
     )
     
     session.add(new_preference)
     session.commit()
     session.refresh(new_preference)
     
-    # Parse JSON fields for response
-    response_pref = _format_preference_response(new_preference)
-    return response_pref
+    return new_preference
 
 
-@router.get("/my-preferences", response_model=list[CandidateJobPreferenceRead])
+@router.get("/my-preferences", response_model=list[JobPreferenceRead])
 def get_my_preferences(
     current_user: dict = Depends(require_candidate),
     session: Session = Depends(get_session)
 ):
-    """Get all job preferences for authenticated candidate."""
+    """Get all active job preferences for authenticated candidate."""
     user_id = current_user.get("user_id")
     
     candidate = session.exec(
@@ -112,57 +73,17 @@ def get_my_preferences(
             detail="Candidate profile not found"
         )
     
-    preferences = session.exec(
-        select(CandidateJobPreference).where(CandidateJobPreference.candidate_id == candidate.id)
-    ).all()
-    
-    return [_format_preference_response(p) for p in preferences]
-
-
-@router.get("/my-profile", response_model=CandidateReadWithPreferences)
-def get_profile_with_preferences(
-    current_user: dict = Depends(require_candidate),
-    session: Session = Depends(get_session)
-):
-    """Get candidate profile with all job preferences (Dashboard view)."""
-    user_id = current_user.get("user_id")
-    
-    candidate = session.exec(
-        select(Candidate).where(Candidate.user_id == user_id)
-    ).first()
-    
-    if not candidate:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Candidate profile not found"
-        )
-    
-    # Get all preferences
     preferences = session.exec(
         select(CandidateJobPreference).where(
-            CandidateJobPreference.candidate_id == candidate.id
-        )
+            (CandidateJobPreference.candidate_id == candidate.id) &
+            (CandidateJobPreference.is_active == True)
+        ).order_by(CandidateJobPreference.created_at.desc())
     ).all()
     
-    # Format response
-    formatted_prefs = [_format_preference_response(p) for p in preferences]
-    
-    return CandidateReadWithPreferences(
-        id=candidate.id,
-        user_id=candidate.user_id,
-        name=candidate.name,
-        location=candidate.location,
-        profile_picture_path=candidate.profile_picture_path,
-        summary=candidate.summary,
-        work_type=candidate.work_type,
-        availability=candidate.availability,
-        created_at=candidate.created_at,
-        updated_at=candidate.updated_at,
-        job_preferences=formatted_prefs
-    )
+    return preferences
 
 
-@router.get("/{preference_id}", response_model=CandidateJobPreferenceRead)
+@router.get("/{preference_id}", response_model=JobPreferenceRead)
 def get_preference(
     preference_id: int,
     current_user: dict = Depends(require_candidate),
@@ -194,13 +115,13 @@ def get_preference(
             detail="Job preference not found"
         )
     
-    return _format_preference_response(preference)
+    return preference
 
 
-@router.put("/{preference_id}", response_model=CandidateJobPreferenceRead)
+@router.put("/{preference_id}", response_model=JobPreferenceRead)
 def update_preference(
     preference_id: int,
-    update: CandidateJobPreferenceUpdate,
+    update: JobPreferenceUpdate,
     current_user: dict = Depends(require_candidate),
     session: Session = Depends(get_session)
 ):
@@ -234,11 +155,8 @@ def update_preference(
     update_data = update.model_dump(exclude_unset=True)
     
     for field, value in update_data.items():
-        if field == "roles" and value is not None:
-            setattr(preference, field, json.dumps(value))
-        elif field == "required_skills" and value is not None:
-            setattr(preference, field, json.dumps(value))
-        elif field == "location_preferences" and value is not None:
+        if field == 'required_skills' and value is not None:
+            # Convert list to JSON string
             setattr(preference, field, json.dumps(value))
         elif value is not None:
             setattr(preference, field, value)
@@ -248,7 +166,7 @@ def update_preference(
     session.commit()
     session.refresh(preference)
     
-    return _format_preference_response(preference)
+    return preference
 
 
 @router.delete("/{preference_id}", response_model=dict)
@@ -257,7 +175,7 @@ def delete_preference(
     current_user: dict = Depends(require_candidate),
     session: Session = Depends(get_session)
 ):
-    """Delete a job preference."""
+    """Delete a job preference (soft or hard delete)."""
     user_id = current_user.get("user_id")
     
     candidate = session.exec(
@@ -283,35 +201,8 @@ def delete_preference(
             detail="Job preference not found"
         )
     
+    # Hard delete
     session.delete(preference)
     session.commit()
     
     return {"message": "Job preference deleted successfully"}
-
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-def _format_preference_response(preference: CandidateJobPreference) -> CandidateJobPreferenceRead:
-    """Convert preference model to response schema, parsing JSON fields."""
-    return CandidateJobPreferenceRead(
-        id=preference.id,
-        candidate_id=preference.candidate_id,
-        product_author_id=preference.product_author_id,
-        product_id=preference.product_id,
-        roles=json.loads(preference.roles) if preference.roles else [],
-        seniority_level=preference.seniority_level,
-        years_experience_min=preference.years_experience_min,
-        years_experience_max=preference.years_experience_max,
-        hourly_rate_min=preference.hourly_rate_min,
-        hourly_rate_max=preference.hourly_rate_max,
-        required_skills=json.loads(preference.required_skills) if preference.required_skills else None,
-        work_type=preference.work_type,
-        location_preferences=json.loads(preference.location_preferences) if preference.location_preferences else None,
-        availability=preference.availability,
-        preference_name=preference.preference_name,
-        is_active=preference.is_active,
-        created_at=preference.created_at,
-        updated_at=preference.updated_at,
-    )

@@ -4,9 +4,12 @@ import {
   candidateAPI,
   jobRolesAPI,
   jobsAPI,
+  preferencesAPI,
   default as apiClient,
 } from '../api/client';
 import { useAuth } from '../context/authStore';
+import { JobPreferenceCard, JobPreferencesList } from '../components/JobPreferencesCard';
+import { SkillSelector } from '../components/SkillSelector';
 import '../styles/Dashboard.css';
 
 // Technical and soft skills lists
@@ -40,12 +43,22 @@ const CandidateDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [saving, setSaving] = useState(false);
   
+  // Multiple job profiles state
+  const [jobProfiles, setJobProfiles] = useState<any[]>([]);
+  const [editingProfile, setEditingProfile] = useState<any>(null);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
+  
   // Author/Product/Role dropdowns
   const [authors, setAuthors] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [allSkills, setAllSkills] = useState<any[]>([]);
+  
+  // Skills state for main profile and job preferences
+  const [skillsInput, setSkillsInput] = useState<any[]>([]);
+  const [prefSkillsInput, setPrefSkillsInput] = useState<any[]>([]);
   
   // Preference form state
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -82,19 +95,25 @@ const CandidateDashboard: React.FC = () => {
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      const [profileRes, resumesRes, appsRes, authorsRes, skillsRes, jobsRes] = await Promise.all([
+      const [profileRes, resumesRes, appsRes, authorsRes, skillsRes, jobsRes, productsRes, jobProfilesRes] = await Promise.all([
         candidateAPI.getMe(),
         candidateAPI.listResumes().catch(() => ({ data: [] })),
         candidateAPI.listApplications().catch(() => ({ data: [] })),
         jobRolesAPI.getAuthors().catch(() => ({ data: [] })),
         jobRolesAPI.getSkills().catch(() => ({ data: [] })),
         apiClient.get('/jobs/available').catch(() => ({ data: [] })),
+        jobRolesAPI.getProducts('Oracle').catch(() => ({ data: [] })),
+        preferencesAPI.getMyPreferences().catch(() => ({ data: [] })),
       ]);
 
       setProfile(profileRes.data || {});
       setFormData(profileRes.data || {});
       setResumes(Array.isArray(resumesRes.data) ? resumesRes.data : []);
       setApplications(Array.isArray(appsRes.data) ? appsRes.data : []);
+      
+      // Handle job profiles
+      const jobProfilesData = Array.isArray(jobProfilesRes.data) ? jobProfilesRes.data : jobProfilesRes.data?.data || [];
+      setJobProfiles(jobProfilesData);
       
       // Handle authors response - could be array or wrapped in data
       const authorsData = Array.isArray(authorsRes.data) ? authorsRes.data : authorsRes.data?.data || [];
@@ -106,6 +125,18 @@ const CandidateDashboard: React.FC = () => {
       // Handle jobs response
       const jobsData = Array.isArray(jobsRes.data) ? jobsRes.data : (jobsRes.data as any)?.data || [];
       setAvailableJobs(jobsData);
+
+      // Handle products response - API returns {author, products: [...]}
+      let productsData = [];
+      if (Array.isArray(productsRes.data)) {
+        productsData = productsRes.data;
+      } else if (productsRes.data?.products && Array.isArray(productsRes.data.products)) {
+        productsData = productsRes.data.products;
+      } else if (productsRes.data?.data && Array.isArray(productsRes.data.data)) {
+        productsData = productsRes.data.data;
+      }
+      console.log('Processed products:', productsData);
+      setProducts(productsData);
       
       // TODO: Generate recommendations based on candidate profile vs available jobs
       // For now, recommendations will be empty until AI integration
@@ -144,29 +175,63 @@ const CandidateDashboard: React.FC = () => {
   const handleLoadProducts = async (authorName: string) => {
     try {
       const res = await jobRolesAPI.getProducts(authorName);
-      setProducts(res.data);
+      let productsData = [];
+      if (Array.isArray(res.data)) {
+        productsData = res.data;
+      } else if (res.data?.products && Array.isArray(res.data.products)) {
+        productsData = res.data.products;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        productsData = res.data.data;
+      }
+      console.log(`Loaded products for ${authorName}:`, productsData);
+      setProducts(productsData);
     } catch (err) {
       console.error('Error loading products:', err);
+      setProducts([]);
     }
   };
 
   const handleLoadRoles = async (authorName: string, productName: string) => {
     try {
       const res = await jobRolesAPI.getRoles(authorName, productName);
-      setRoles(res.data);
+      let rolesData = [];
+      if (Array.isArray(res.data)) {
+        rolesData = res.data;
+      } else if (res.data?.roles && Array.isArray(res.data.roles)) {
+        rolesData = res.data.roles;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        rolesData = res.data.data;
+      }
+      console.log(`Loaded roles for ${authorName} - ${productName}:`, rolesData);
+      setRoles(rolesData);
     } catch (err) {
       console.error('Error loading roles:', err);
+      setRoles([]);
     }
   };
 
   const handleUpdateProfile = async () => {
     try {
       setSaving(true);
-      await candidateAPI.updateMe(formData);
+      // Only send fields that the backend expects
+      const updateData = {
+        name: formData.name,
+        location: formData.location,
+        summary: formData.summary,
+        product: formData.product,
+        primary_role: formData.primary_role,
+        years_experience: formData.years_experience,
+        rate_min: formData.rate_min,
+        rate_max: formData.rate_max,
+        availability: formData.availability,
+        work_type: formData.work_type,
+      };
+      await candidateAPI.updateMe(updateData);
       setError('');
       alert('Profile updated successfully');
       await fetchAllData();
     } catch (err: any) {
+      console.error('Update error:', err);
       setError(err.response?.data?.detail || 'Failed to update profile');
     } finally {
       setSaving(false);
@@ -265,6 +330,103 @@ const CandidateDashboard: React.FC = () => {
     navigate('/');
   };
 
+  // ========== Multiple Job Profiles Handlers ==========
+
+  const handleAddProfile = () => {
+    setFormMode('add');
+    setEditingProfile({
+      preference_name: '',
+      product: '',
+      primary_role: '',
+      years_experience: undefined,
+      rate_min: undefined,
+      rate_max: undefined,
+      work_type: '',
+      location: '',
+      availability: '',
+      summary: '',
+    });
+    setProducts([]);
+    setRoles([]);
+    setShowProfileForm(true);
+  };
+
+  const handleEditProfile = (profile: any) => {
+    setFormMode('edit');
+    setEditingProfile(profile);
+    setShowProfileForm(true);
+    // Load roles for the product
+    if (profile.product) {
+      handleLoadRoles('Oracle', profile.product);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editingProfile.product || !editingProfile.primary_role) {
+      setError('Please select both product and role');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const profileData = {
+        preference_name: editingProfile.preference_name || `${editingProfile.product} - ${editingProfile.primary_role}`,
+        product: editingProfile.product,
+        primary_role: editingProfile.primary_role,
+        years_experience: editingProfile.years_experience,
+        rate_min: editingProfile.rate_min,
+        rate_max: editingProfile.rate_max,
+        work_type: editingProfile.work_type,
+        location: editingProfile.location,
+        availability: editingProfile.availability,
+        summary: editingProfile.summary,
+        is_active: editingProfile.is_active !== undefined ? editingProfile.is_active : true,
+      };
+
+      if (formMode === 'add') {
+        await preferencesAPI.create(profileData);
+        setError('');
+        alert('Profile created successfully!');
+      } else {
+        await preferencesAPI.update(editingProfile.id, profileData);
+        setError('');
+        alert('Profile updated successfully!');
+      }
+
+      setShowProfileForm(false);
+      setEditingProfile(null);
+      await fetchAllData();
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      setError(err.response?.data?.detail || 'Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProfile = async (preferenceId: number) => {
+    try {
+      setSaving(true);
+      await preferencesAPI.delete(preferenceId);
+      setError('');
+      alert('Profile deleted successfully!');
+      await fetchAllData();
+    } catch (err: any) {
+      console.error('Error deleting profile:', err);
+      setError(err.response?.data?.detail || 'Failed to delete profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelProfileForm = () => {
+    setShowProfileForm(false);
+    setEditingProfile(null);
+    setFormMode('add');
+    setProducts([]);
+    setRoles([]);
+  };
+
   if (loading) return <div className="dashboard-container loading">Loading...</div>;
 
   return (
@@ -275,7 +437,7 @@ const CandidateDashboard: React.FC = () => {
       </header>
 
       <nav className="dashboard-tabs">
-        <button className={`tab ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>Profile</button>
+        <button className={`tab ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>Profile Dashboard</button>
         <button className={`tab ${activeTab === 'skills' ? 'active' : ''}`} onClick={() => setActiveTab('skills')}>Skills</button>
         <button className={`tab ${activeTab === 'certifications' ? 'active' : ''}`} onClick={() => setActiveTab('certifications')}>Certifications</button>
         <button className={`tab ${activeTab === 'resumes' ? 'active' : ''}`} onClick={() => setActiveTab('resumes')}>Resumes</button>
@@ -286,143 +448,475 @@ const CandidateDashboard: React.FC = () => {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="dashboard-content">
-        {/* Profile Tab */}
+        {/* Profile Dashboard Tab - Shows Main Profile + All Job Profiles */}
         {activeTab === 'profile' && profile && (
-          <div className="profile-section">
-            <h2>Candidate Profile</h2>
-            <p style={{ color: '#666', marginBottom: '20px' }}>Review your profile summary and keep your information up to date.</p>
-            
-            {/* Profile Summary Card */}
-            <div style={{
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #e0e0e0',
-              borderRadius: '8px',
-              padding: '24px',
-              marginBottom: '32px'
-            }}>
-              <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Profile Summary</h3>
-              <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>A quick view of your candidate information and preferences.</p>
+          <div className="profile-dashboard-section">
+            {/* Main Profile Section */}
+            <div style={{ marginBottom: '48px' }}>
+              <h2>Main Profile</h2>
+              <p style={{ color: '#666', marginBottom: '20px' }}>Your primary candidate information and details.</p>
               
-              {/* Name and Role */}
-              <div style={{ marginBottom: '24px' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600 }}>{profile.name || 'Your Name'}</h4>
-                <p style={{ margin: 0, color: '#666', fontSize: '14px', lineHeight: 1.5 }}>
-                  {profile.primary_role || 'No role selected'}{profile.product && `, ${profile.product}`}{profile.product_author && `, ${profile.product_author}`}
-                  {profile.summary && ` - ${profile.summary}`}
-                </p>
-              </div>
-              
-              {/* Key Metrics Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #e0e0e0' }}>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Experience</p>
-                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{profile.years_experience || '—'} yrs</p>
-                </div>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Rate</p>
-                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
-                    {profile.rate_min || '—'}{profile.rate_max && `–$${profile.rate_max}`}{profile.rate_min && '/hr'}
+              {/* Profile Summary Card */}
+              <div style={{
+                backgroundColor: '#f8f9fa',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                padding: '24px',
+                marginBottom: '32px'
+              }}>
+                <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Profile Summary</h3>
+                <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>A quick view of your candidate information and preferences.</p>
+                
+                {/* Name and Role */}
+                <div style={{ marginBottom: '24px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600 }}>{profile.name || 'Your Name'}</h4>
+                  <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '14px', lineHeight: 1.5 }}>
+                    {profile.primary_role || 'No role selected'}{profile.product && `, ${profile.product}`}
                   </p>
+                  {profile.summary && (
+                    <p style={{ margin: 0, color: '#555', fontSize: '13px', lineHeight: 1.6, fontStyle: 'italic' }}>
+                      "{profile.summary}"
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Location</p>
-                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{profile.location || '—'}</p>
+                
+                {/* Key Metrics Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #e0e0e0' }}>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Experience</p>
+                    <p style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{profile.years_experience || '—'} yrs</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Rate</p>
+                    <p style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
+                      {profile.rate_min || '—'}{profile.rate_max && `–$${profile.rate_max}`}{profile.rate_min && '/hr'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Location</p>
+                    <p style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{profile.location || '—'}</p>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Additional Info */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Status</p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.availability || '—'}</p>
+                
+                {/* Additional Info */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Status</p>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.availability || '—'}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Career Path</p>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.primary_role || '—'}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Product Expert</p>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.product ? `Oracle - ${profile.product}` : '—'}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Work Type</p>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.work_type || '—'}</p>
+                  </div>
                 </div>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Career Path</p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.primary_role || '—'}</p>
-                </div>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Product Expert</p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.product_author && profile.product ? `${profile.product_author} - ${profile.product}` : '—'}</p>
-                </div>
-                <div>
-                  <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Work Type</p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.work_type || '—'}</p>
-                </div>
-              </div>
-            </div>
 
-            <h3>Edit Your Profile</h3>
-            <div className="form-group">
-              <label>Name</label>
-              <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-            </div>
-            <div className="form-group">
-              <label>Location</label>
-              <input type="text" value={formData.location || ''} onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
-            </div>
-            <div className="form-group">
-              <label>Years of Experience</label>
-              <input type="number" value={formData.years_experience || ''} onChange={(e) => setFormData({ ...formData, years_experience: parseInt(e.target.value) })} />
-            </div>
-            <div className="form-row">
+                {/* Skills Section */}
+                {(profile?.skills?.length > 0 || skillsInput.length > 0) && (
+                  <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e0e0e0' }}>
+                    <p style={{ margin: '0 0 12px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Key Skills ({(profile?.skills?.length || 0) + skillsInput.length})</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {/* Display saved skills */}
+                      {profile?.skills?.map((skill: any) => (
+                        <div 
+                          key={`saved-${skill.id}`}
+                          style={{
+                            backgroundColor: skill.category === 'technical' ? '#e3f2fd' : '#f3e5f5',
+                            color: skill.category === 'technical' ? '#1976d2' : '#7b1fa2',
+                            padding: '6px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            border: skill.category === 'technical' ? '1px solid #90caf9' : '1px solid #e1bee7'
+                          }}
+                        >
+                          {skill.name}
+                          {skill.level && <span> ({skill.level})</span>}
+                        </div>
+                      ))}
+                      {/* Display newly added skills (not yet saved) */}
+                      {skillsInput.map((skill: any, idx: number) => (
+                        <div 
+                          key={`new-${idx}`}
+                          style={{
+                            backgroundColor: skill.category === 'technical' ? '#e3f2fd' : '#f3e5f5',
+                            color: skill.category === 'technical' ? '#1976d2' : '#7b1fa2',
+                            padding: '6px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            border: skill.category === 'technical' ? '2px solid #90caf9' : '2px solid #e1bee7',
+                            opacity: 0.85,
+                            position: 'relative'
+                          }}
+                        >
+                          {skill.name}
+                          {skill.level && <span> ({skill.level})</span>}
+                          <span style={{ marginLeft: '6px', fontSize: '10px', opacity: 0.7 }}>✨</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <h3>Edit Main Profile</h3>
               <div className="form-group">
-                <label>Rate Min ($)</label>
-                <input type="number" value={formData.rate_min || ''} onChange={(e) => setFormData({ ...formData, rate_min: parseFloat(e.target.value) })} />
+                <label>Name</label>
+                <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>Rate Max ($)</label>
-                <input type="number" value={formData.rate_max || ''} onChange={(e) => setFormData({ ...formData, rate_max: parseFloat(e.target.value) })} />
+                <label>Location</label>
+                <input type="text" value={formData.location || ''} onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
               </div>
-            </div>
-            <div className="form-group">
-              <label>Availability</label>
-              <select value={formData.availability || ''} onChange={(e) => setFormData({ ...formData, availability: e.target.value })}>
-                <option value="">Select...</option>
-                <option value="Immediately">Immediately</option>
-                <option value="2 weeks">2 weeks</option>
-                <option value="1 month">1 month</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Work Type</label>
-              <select value={formData.work_type || ''} onChange={(e) => setFormData({ ...formData, work_type: e.target.value })}>
-                <option value="">Select...</option>
-                <option value="Remote">Remote</option>
-                <option value="On-site">On-site</option>
-                <option value="Hybrid">Hybrid</option>
-              </select>
-            </div>
-            <h3>Product/Role Focus</h3>
-            <div className="form-group">
-              <label>Product Author</label>
-              <select value={formData.product_author || ''} onChange={(e) => { setFormData({ ...formData, product_author: e.target.value, product: '', primary_role: '' }); setProducts([]); setRoles([]); }}>
-                <option value="">Select Author...</option>
-                {authors.map((a) => (<option key={a} value={a}>{a}</option>))}
-              </select>
-            </div>
-            {formData.product_author && (
               <div className="form-group">
-                <label>Product</label>
-                <select value={formData.product || ''} onChange={(e) => { setFormData({ ...formData, product: e.target.value, primary_role: '' }); setRoles([]); }} onFocus={() => handleLoadProducts(formData.product_author)}>
+                <label>Years of Experience</label>
+                <input type="number" value={formData.years_experience || ''} onChange={(e) => setFormData({ ...formData, years_experience: parseInt(e.target.value) })} />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Rate Min ($)</label>
+                  <input type="number" value={formData.rate_min || ''} onChange={(e) => setFormData({ ...formData, rate_min: parseFloat(e.target.value) })} />
+                </div>
+                <div className="form-group">
+                  <label>Rate Max ($)</label>
+                  <input type="number" value={formData.rate_max || ''} onChange={(e) => setFormData({ ...formData, rate_max: parseFloat(e.target.value) })} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Availability</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g., Immediately, 2 weeks, Starting Jan 15, etc." 
+                  value={formData.availability || ''} 
+                  onChange={(e) => setFormData({ ...formData, availability: e.target.value })} 
+                />
+              </div>
+              <div className="form-group">
+                <label>Work Type</label>
+                <select value={formData.work_type || ''} onChange={(e) => setFormData({ ...formData, work_type: e.target.value })}>
+                  <option value="">Select...</option>
+                  <option value="Remote">Remote</option>
+                  <option value="On-site">On-site</option>
+                  <option value="Hybrid">Hybrid</option>
+                </select>
+              </div>
+              <h3>Product/Role Focus</h3>
+              <div className="form-group">
+                <label>Product Vendor</label>
+                <input
+                  type="text"
+                  value="Oracle"
+                  disabled
+                  style={{
+                    backgroundColor: '#f5f5f5',
+                    color: '#666',
+                    cursor: 'not-allowed',
+                    fontWeight: 600
+                  }}
+                />
+              </div>
+              <div className="form-group">
+                <label>Product Type</label>
+                <select value={formData.product || ''} onChange={(e) => { setFormData({ ...formData, product: e.target.value, primary_role: '' }); setRoles([]); }} onFocus={() => handleLoadProducts('Oracle')}>
                   <option value="">Select Product...</option>
                   {products.map((p) => (<option key={p} value={p}>{p}</option>))}
                 </select>
               </div>
-            )}
-            {formData.product && (
+              {formData.product && (
+                <div className="form-group">
+                  <label>Primary Role</label>
+                  <select value={formData.primary_role || ''} onChange={(e) => setFormData({ ...formData, primary_role: e.target.value })} onFocus={() => handleLoadRoles('Oracle', formData.product)}>
+                    <option value="">Select Role...</option>
+                    {roles.map((r) => (<option key={r} value={r}>{r}</option>))}
+                  </select>
+                </div>
+              )}
               <div className="form-group">
-                <label>Primary Role</label>
-                <select value={formData.primary_role || ''} onChange={(e) => setFormData({ ...formData, primary_role: e.target.value })} onFocus={() => handleLoadRoles(formData.product_author, formData.product)}>
-                  <option value="">Select Role...</option>
-                  {roles.map((r) => (<option key={r} value={r}>{r}</option>))}
-                </select>
+                <label>Professional Summary</label>
+                <textarea value={formData.summary || ''} onChange={(e) => setFormData({ ...formData, summary: e.target.value })} rows={4} />
               </div>
-            )}
-            <div className="form-group">
-              <label>Professional Summary</label>
-              <textarea value={formData.summary || ''} onChange={(e) => setFormData({ ...formData, summary: e.target.value })} rows={4} />
+
+              {formData.product && formData.primary_role && (
+                <div className="form-group">
+                  <label>Key Skills for Your Profile</label>
+                  <SkillSelector
+                    selectedSkills={skillsInput}
+                    onSkillsChange={setSkillsInput}
+                    technicalSkills={technicalSkills}
+                    softSkills={softSkills}
+                  />
+                  <small style={{ color: '#999', marginTop: '8px', display: 'block' }}>
+                    Select skills that match your experience in {formData.product} - {formData.primary_role}
+                  </small>
+                </div>
+              )}
+
+              <button className="btn btn-primary" onClick={handleUpdateProfile} disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</button>
             </div>
-            <button className="btn btn-primary" onClick={handleUpdateProfile} disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</button>
+
+            {/* Job Preference Profiles Section */}
+            <div style={{
+              borderTop: '2px solid #e0e0e0',
+              paddingTop: '48px'
+            }}>
+              {showProfileForm ? (
+                <div style={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  padding: '24px',
+                  maxWidth: '600px',
+                  margin: '0 auto 24px'
+                }}>
+                  <h3 style={{ marginTop: 0 }}>
+                    {formMode === 'add' ? 'Create New Role Profile' : 'Edit Role Profile'}
+                  </h3>
+                  
+                  <div className="form-group">
+                    <label>Profile Name (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Oracle Fusion - Senior Developer"
+                      value={editingProfile.preference_name || ''}
+                      onChange={(e) => setEditingProfile({ ...editingProfile, preference_name: e.target.value })}
+                    />
+                    <small style={{ color: '#999' }}>If left empty, will be auto-generated from product and role</small>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Product Vendor</label>
+                    <input
+                      type="text"
+                      value="Oracle"
+                      disabled
+                      style={{
+                        backgroundColor: '#f5f5f5',
+                        color: '#666',
+                        cursor: 'not-allowed',
+                        fontWeight: 600
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Product Type *</label>
+                    <select
+                      value={editingProfile.product || ''}
+                      onChange={(e) => {
+                        setEditingProfile({ ...editingProfile, product: e.target.value, primary_role: '' });
+                        setRoles([]);
+                      }}
+                      onFocus={() => handleLoadProducts('Oracle')}
+                    >
+                      <option value="">Select Product...</option>
+                      {products.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {editingProfile.product && (
+                    <div className="form-group">
+                      <label>Primary Role *</label>
+                      <select
+                        value={editingProfile.primary_role || ''}
+                        onChange={(e) => setEditingProfile({ ...editingProfile, primary_role: e.target.value })}
+                        onFocus={() => handleLoadRoles('Oracle', editingProfile.product)}
+                      >
+                        <option value="">Select Role...</option>
+                        {roles.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>Years of Experience</label>
+                    <input
+                      type="number"
+                      value={editingProfile.years_experience || ''}
+                      onChange={(e) => setEditingProfile({ ...editingProfile, years_experience: parseInt(e.target.value) })}
+                    />
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Rate Min ($)</label>
+                      <input
+                        type="number"
+                        value={editingProfile.rate_min || ''}
+                        onChange={(e) => setEditingProfile({ ...editingProfile, rate_min: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Rate Max ($)</label>
+                      <input
+                        type="number"
+                        value={editingProfile.rate_max || ''}
+                        onChange={(e) => setEditingProfile({ ...editingProfile, rate_max: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Work Type</label>
+                    <select
+                      value={editingProfile.work_type || ''}
+                      onChange={(e) => setEditingProfile({ ...editingProfile, work_type: e.target.value })}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Remote">Remote</option>
+                      <option value="On-site">On-site</option>
+                      <option value="Hybrid">Hybrid</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Location</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., San Francisco, CA or Any"
+                      value={editingProfile.location || ''}
+                      onChange={(e) => setEditingProfile({ ...editingProfile, location: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Availability</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Immediately, 2 weeks, Starting Jan 15"
+                      value={editingProfile.availability || ''}
+                      onChange={(e) => setEditingProfile({ ...editingProfile, availability: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Professional Summary</label>
+                    <textarea
+                      placeholder="Brief summary of your background and interests for this role"
+                      value={editingProfile.summary || ''}
+                      onChange={(e) => setEditingProfile({ ...editingProfile, summary: e.target.value })}
+                      rows={4}
+                    />
+                  </div>
+
+                  {/* Skills Preview Section */}
+                  {editingProfile.product && editingProfile.primary_role && (
+                    <div style={{
+                      backgroundColor: '#f8f9fa',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      marginBottom: '16px'
+                    }}>
+                      <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '12px', fontWeight: 500 }}>
+                        Profile Preview
+                      </p>
+                      <p style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>
+                        {editingProfile.preference_name || `${editingProfile.product} - ${editingProfile.primary_role}`}
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '12px' }}>
+                        {editingProfile.years_experience && (
+                          <div style={{ fontSize: '12px' }}>
+                            <span style={{ color: '#666', fontWeight: 500 }}>Experience:</span> {editingProfile.years_experience} yrs
+                          </div>
+                        )}
+                        {(editingProfile.rate_min || editingProfile.rate_max) && (
+                          <div style={{ fontSize: '12px' }}>
+                            <span style={{ color: '#666', fontWeight: 500 }}>Rate:</span> ${editingProfile.rate_min || '0'}–${editingProfile.rate_max || '0'}/hr
+                          </div>
+                        )}
+                        {editingProfile.work_type && (
+                          <div style={{ fontSize: '12px' }}>
+                            <span style={{ color: '#666', fontWeight: 500 }}>Type:</span> {editingProfile.work_type}
+                          </div>
+                        )}
+                        {editingProfile.location && (
+                          <div style={{ fontSize: '12px' }}>
+                            <span style={{ color: '#666', fontWeight: 500 }}>Location:</span> {editingProfile.location}
+                          </div>
+                        )}
+                      </div>
+                      {/* Preview Skills */}
+                      {editingProfile.required_skills && (
+                        <div>
+                          <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '11px', fontWeight: 500 }}>SKILLS ({editingProfile.required_skills ? (typeof editingProfile.required_skills === 'string' ? JSON.parse(editingProfile.required_skills).length : editingProfile.required_skills.length) : 0})</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {(typeof editingProfile.required_skills === 'string' ? JSON.parse(editingProfile.required_skills) : editingProfile.required_skills || []).map((skill: any, idx: number) => (
+                              <div 
+                                key={idx}
+                                style={{
+                                  backgroundColor: skill.category === 'technical' ? '#e3f2fd' : '#f3e5f5',
+                                  color: skill.category === 'technical' ? '#1976d2' : '#7b1fa2',
+                                  padding: '4px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '11px',
+                                  fontWeight: 500,
+                                  border: skill.category === 'technical' ? '1px solid #90caf9' : '1px solid #e1bee7'
+                                }}
+                              >
+                                {skill.name}
+                                {skill.level && <span> ({skill.level})</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {editingProfile.product && editingProfile.primary_role && (
+                    <div className="form-group">
+                      <label>Required Skills for This Role</label>
+                      <SkillSelector
+                        selectedSkills={editingProfile.required_skills ? (typeof editingProfile.required_skills === 'string' ? JSON.parse(editingProfile.required_skills) : editingProfile.required_skills) : []}
+                        onSkillsChange={(skills) => {
+                          const skillsJson = JSON.stringify(skills);
+                          setEditingProfile({ ...editingProfile, required_skills: skillsJson });
+                        }}
+                        technicalSkills={technicalSkills}
+                        softSkills={softSkills}
+                      />
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleSaveProfile}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving...' : formMode === 'add' ? 'Create Profile' : 'Update Profile'}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={handleCancelProfileForm}
+                      disabled={saving}
+                      style={{ backgroundColor: '#6c757d' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <JobPreferencesList
+                  preferences={jobProfiles}
+                  onEdit={handleEditProfile}
+                  onDelete={handleDeleteProfile}
+                  onAddNew={handleAddProfile}
+                />
+              )}
+            </div>
           </div>
         )}
 

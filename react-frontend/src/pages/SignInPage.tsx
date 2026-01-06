@@ -45,7 +45,20 @@ const SignInPage: React.FC = () => {
         navigate('/otp-verify');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed');
+      console.error('[SIGNIN] Error:', err);
+      
+      // Try to extract error message from various sources
+      let errorMsg = 'Login failed';
+      
+      if (err.response?.data?.detail) {
+        errorMsg = err.response.data.detail;
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

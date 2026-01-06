@@ -145,7 +145,6 @@ class CandidateRead(CandidateBase):
 class CandidateProfileUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
-    product_author: Optional[str] = None
     product: Optional[str] = None
     primary_role: Optional[str] = None
     summary: Optional[str] = None
@@ -154,9 +153,55 @@ class CandidateProfileUpdate(BaseModel):
     rate_max: Optional[float] = None
     availability: Optional[str] = None
     work_type: Optional[str] = None
-    location_preference_1: Optional[str] = None
-    location_preference_2: Optional[str] = None
-    location_preference_3: Optional[str] = None
+
+
+# ============================================================================
+# JOB PREFERENCES SCHEMAS
+# ============================================================================
+
+class JobPreferenceCreate(BaseModel):
+    preference_name: Optional[str] = None
+    product: str
+    primary_role: str
+    years_experience: Optional[int] = None
+    rate_min: Optional[float] = None
+    rate_max: Optional[float] = None
+    work_type: Optional[str] = None
+    location: Optional[str] = None
+    availability: Optional[str] = None
+    summary: Optional[str] = None
+    required_skills: Optional[list] = None  # [{\"name\": \"skill\", \"rating\": 1-5}, ...]
+
+
+class JobPreferenceUpdate(BaseModel):
+    preference_name: Optional[str] = None
+    product: Optional[str] = None
+    primary_role: Optional[str] = None
+    years_experience: Optional[int] = None
+    rate_min: Optional[float] = None
+    rate_max: Optional[float] = None
+    work_type: Optional[str] = None
+    location: Optional[str] = None
+    availability: Optional[str] = None
+    summary: Optional[str] = None
+    required_skills: Optional[list] = None  # [{\"name\": \"skill\", \"rating\": 1-5}, ...]
+    is_active: Optional[bool] = None
+
+
+class JobPreferenceRead(BaseModel):
+    id: int
+    preference_name: Optional[str] = None
+    product: str
+    primary_role: str
+    years_experience: Optional[int] = None
+    rate_min: Optional[float] = None
+    rate_max: Optional[float] = None
+    work_type: Optional[str] = None
+    location: Optional[str] = None
+    availability: Optional[str] = None
+    summary: Optional[str] = None
+    is_active: bool
+    created_at: datetime
 
 
 # ============================================================================
