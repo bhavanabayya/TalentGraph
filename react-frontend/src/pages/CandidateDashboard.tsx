@@ -88,7 +88,6 @@ const CandidateDashboard: React.FC = () => {
   
   // Resume upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const editMainProfileRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchAllData();
@@ -727,108 +726,6 @@ const CandidateDashboard: React.FC = () => {
                   </div>
                 )}
               </div>
-
-              <h3 ref={editMainProfileRef}>Edit Main Profile</h3>
-              <div className="form-group">
-                <label>Name</label>
-                <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>Location</label>
-                <input type="text" value={formData.location || ''} onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>Years of Experience</label>
-                <input type="number" value={formData.years_experience || ''} onChange={(e) => setFormData({ ...formData, years_experience: parseInt(e.target.value) })} />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Rate Min ($)</label>
-                  <input type="number" value={formData.rate_min || ''} onChange={(e) => setFormData({ ...formData, rate_min: parseFloat(e.target.value) })} />
-                </div>
-                <div className="form-group">
-                  <label>Rate Max ($)</label>
-                  <input type="number" value={formData.rate_max || ''} onChange={(e) => setFormData({ ...formData, rate_max: parseFloat(e.target.value) })} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Availability</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g., Immediately, 2 weeks, Starting Jan 15, etc." 
-                  value={formData.availability || ''} 
-                  onChange={(e) => setFormData({ ...formData, availability: e.target.value })} 
-                />
-              </div>
-              <div className="form-group">
-                <label>Work Type</label>
-                <select value={formData.work_type || ''} onChange={(e) => setFormData({ ...formData, work_type: e.target.value })}>
-                  <option value="">Select...</option>
-                  <option value="Remote">Remote</option>
-                  <option value="On-site">On-site</option>
-                  <option value="Hybrid">Hybrid</option>
-                </select>
-              </div>
-              <h3>Product/Role Focus</h3>
-              <div className="form-group">
-                <label>Product Vendor</label>
-                <input
-                  type="text"
-                  value="Oracle"
-                  disabled
-                  style={{
-                    backgroundColor: '#f5f5f5',
-                    color: '#666',
-                    cursor: 'not-allowed',
-                    fontWeight: 600
-                  }}
-                />
-              </div>
-              <div className="form-group">
-                <label>Product Type</label>
-                <select value={formData.product || ''} onChange={(e) => { setFormData({ ...formData, product: e.target.value, primary_role: '' }); setRoles([]); }} onFocus={() => handleLoadProducts('Oracle')}>
-                  <option value="">Select Product...</option>
-                  {products.map((p) => (<option key={p} value={p}>{p}</option>))}
-                </select>
-              </div>
-              {formData.product && (
-                <div className="form-group">
-                  <label>Primary Role</label>
-                  <select value={formData.primary_role || ''} onChange={(e) => setFormData({ ...formData, primary_role: e.target.value })} onFocus={() => handleLoadRoles('Oracle', formData.product)}>
-                    <option value="">Select Role...</option>
-                    {roles.map((r) => (<option key={r} value={r}>{r}</option>))}
-                  </select>
-                </div>
-              )}
-              <div className="form-group">
-                <label>Professional Summary</label>
-                <textarea value={formData.summary || ''} onChange={(e) => setFormData({ ...formData, summary: e.target.value })} rows={4} />
-              </div>
-
-              {formData.product && formData.primary_role && (
-                <div className="form-group">
-                  <label>Key Skills for Your Profile</label>
-                  <SkillSelector
-                    selectedSkills={[
-                      ...(profile?.skills?.map((s: any) => ({ name: s.name, rating: s.rating || 3 })) || []),
-                      ...skillsInput
-                    ]}
-                    onSkillsChange={(updatedSkills: any[]) => {
-                      // Filter out saved skills and keep only new ones
-                      const savedSkillNames = profile?.skills?.map((s: any) => s.name) || [];
-                      const newSkills = updatedSkills.filter((s: any) => !savedSkillNames.includes(s.name));
-                      setSkillsInput(newSkills);
-                    }}
-                    technicalSkills={technicalSkills}
-                    softSkills={softSkills}
-                  />
-                  <small style={{ color: '#999', marginTop: '8px', display: 'block' }}>
-                    Select skills that match your experience in {formData.product} - {formData.primary_role}
-                  </small>
-                </div>
-              )}
-
-              <button className="btn btn-primary" onClick={handleUpdateProfile} disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</button>
             </div>
 
             {/* Job Preference Profiles Section */}
