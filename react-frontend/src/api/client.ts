@@ -60,6 +60,7 @@ export interface CandidateProfile {
 export interface Skill {
   id?: number;
   name: string;
+  rating?: number;  // 1-5 star rating
   level?: string;
   category?: string;
 }

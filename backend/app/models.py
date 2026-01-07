@@ -37,6 +37,7 @@ class Skill(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     candidate_id: int = Field(foreign_key="candidate.id")
     name: str
+    rating: Optional[int] = Field(default=3)  # 1-5 star rating
     level: Optional[str] = None  # e.g., Beginner / Intermediate / Expert
     category: Optional[str] = None  # "technical", "soft", etc.
 

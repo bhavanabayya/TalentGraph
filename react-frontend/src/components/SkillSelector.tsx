@@ -155,35 +155,102 @@ export const SkillSelector: React.FC<SkillSelectorProps> = ({
           <h4 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>
             Selected Skills ({selectedSkills.length})
           </h4>
-          <div className="skills-grid">
-            {selectedSkills.map(skill => (
-              <div key={skill.name} className="skill-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 600, fontSize: '14px' }}>{skill.name}</span>
-                  <button
-                    onClick={() => handleRemoveSkill(skill.name)}
-                    className="btn-remove-skill"
-                    style={{
-                      backgroundColor: '#f44336',
-                      color: 'white',
-                      border: 'none',
-                      padding: '4px 8px',
-                      borderRadius: '3px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: 600
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#666' }}>Proficiency:</span>
-                  {renderStars(skill.rating, skill.name)}
-                </div>
-              </div>
-            ))}
-          </div>
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
+                <th style={{
+                  padding: '12px',
+                  textAlign: 'left',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  color: '#333',
+                  borderRight: '1px solid #ddd'
+                }}>
+                  Skill Name
+                </th>
+                <th style={{
+                  padding: '12px',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  color: '#333',
+                  borderRight: '1px solid #ddd',
+                  width: '200px'
+                }}>
+                  Proficiency Rating (1-5)
+                </th>
+                <th style={{
+                  padding: '12px',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  color: '#333',
+                  width: '100px'
+                }}>
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedSkills.map((skill, idx) => (
+                <tr key={skill.name} style={{
+                  borderBottom: idx < selectedSkills.length - 1 ? '1px solid #eee' : 'none',
+                  backgroundColor: idx % 2 === 0 ? '#fafafa' : '#fff'
+                }}>
+                  <td style={{
+                    padding: '12px',
+                    fontSize: '14px',
+                    color: '#333',
+                    fontWeight: 500,
+                    borderRight: '1px solid #ddd'
+                  }}>
+                    {skill.name}
+                  </td>
+                  <td style={{
+                    padding: '12px',
+                    textAlign: 'center',
+                    borderRight: '1px solid #ddd'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '2px' }}>
+                      {renderStars(skill.rating, skill.name, false)}
+                    </div>
+                    <span style={{ fontSize: '11px', color: '#999', marginTop: '4px', display: 'block' }}>
+                      {skill.rating}/5
+                    </span>
+                  </td>
+                  <td style={{
+                    padding: '12px',
+                    textAlign: 'center'
+                  }}>
+                    <button
+                      onClick={() => handleRemoveSkill(skill.name)}
+                      style={{
+                        backgroundColor: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#d32f2f')}
+                      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#f44336')}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

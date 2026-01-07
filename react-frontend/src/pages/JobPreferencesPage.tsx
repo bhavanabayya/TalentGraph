@@ -56,7 +56,10 @@ const JobPreferencesPage: React.FC = () => {
     preference_name: '',
   });
 
+  // Skills state with ratings
+  const [skillsWithRatings, setSkillsWithRatings] = useState<Array<{ name: string; rating: number }>>([]);
   const [selectedSkill, setSelectedSkill] = useState('');
+  const [currentSkillRating, setCurrentSkillRating] = useState(3);
   const [selectedLocation, setSelectedLocation] = useState('');
 
   // Fetch data on component mount
@@ -149,20 +152,23 @@ const JobPreferencesPage: React.FC = () => {
   };
 
   const handleAddSkill = () => {
-    if (selectedSkill && !formData.required_skills?.includes(selectedSkill)) {
-      setFormData({
-        ...formData,
-        required_skills: [...(formData.required_skills || []), selectedSkill],
-      });
+    if (selectedSkill && !skillsWithRatings.find(s => s.name === selectedSkill)) {
+      setSkillsWithRatings([...skillsWithRatings, { name: selectedSkill, rating: currentSkillRating }]);
       setSelectedSkill('');
+      setCurrentSkillRating(3);
     }
   };
 
-  const handleRemoveSkill = (skill: string) => {
-    setFormData({
-      ...formData,
-      required_skills: formData.required_skills?.filter((s) => s !== skill),
-    });
+  const handleRemoveSkill = (skillName: string) => {
+    setSkillsWithRatings(skillsWithRatings.filter(s => s.name !== skillName));
+  };
+
+  const handleUpdateSkillRating = (skillName: string, newRating: number) => {
+    setSkillsWithRatings(
+      skillsWithRatings.map(s =>
+        s.name === skillName ? { ...s, rating: newRating } : s
+      )
+    );
   };
 
   const handleAddLocation = () => {
@@ -185,11 +191,17 @@ const JobPreferencesPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Convert skillsWithRatings to the format expected by the backend
+      const submissionData = {
+        ...formData,
+        required_skills: skillsWithRatings.length > 0 ? JSON.stringify(skillsWithRatings) : undefined,
+      };
+      
       if (editingId) {
-        await preferencesAPI.update(editingId, formData);
+        await preferencesAPI.update(editingId, submissionData);
         setSuccessMessage('Profile updated successfully');
       } else {
-        await preferencesAPI.create(formData);
+        await preferencesAPI.create(submissionData);
         setSuccessMessage('Profile created successfully');
       }
       await fetchData();
@@ -206,6 +218,32 @@ const JobPreferencesPage: React.FC = () => {
     setFormData(pref);
     setEditingId(pref.id || null);
     setShowForm(true);
+    
+    // Parse and populate skillsWithRatings from required_skills
+    if (pref.required_skills && pref.required_skills.length > 0) {
+      try {
+        let skillsData = pref.required_skills;
+        
+        // If required_skills is a string, parse it as JSON
+        if (typeof skillsData === 'string') {
+          skillsData = JSON.parse(skillsData);
+        }
+        
+        // Ensure it's an array of objects with name and rating
+        if (Array.isArray(skillsData)) {
+          const parsedSkills = skillsData.map((skill: any) => ({
+            name: typeof skill === 'string' ? skill : skill.name,
+            rating: typeof skill === 'string' ? 0 : (skill.rating || 3)
+          }));
+          setSkillsWithRatings(parsedSkills);
+        }
+      } catch (e) {
+        console.error('Error parsing skills:', e);
+        setSkillsWithRatings([]);
+      }
+    } else {
+      setSkillsWithRatings([]);
+    }
   };
 
   const handleDelete = async (preferenceId: number) => {
@@ -419,33 +457,188 @@ const JobPreferencesPage: React.FC = () => {
             {/* Skills */}
             <div className="form-group">
               <label>Required Skills</label>
-              <div className="skill-input">
-                <select value={selectedSkill} onChange={(e) => setSelectedSkill(e.target.value)}>
-                  <option value="">Select a skill</option>
-                  {ontology.skills?.map((skill) => (
-                    <option key={skill} value={skill}>
-                      {skill}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={handleAddSkill} className="btn-small">
-                  Add
+              <div className="skill-input" style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', marginBottom: '16px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '14px' }}>Skill</label>
+                  <select 
+                    value={selectedSkill} 
+                    onChange={(e) => setSelectedSkill(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="">Select a skill</option>
+                    {ontology.skills?.map((skill) => (
+                      <option key={skill} value={skill}>
+                        {skill}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ minWidth: '150px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '14px' }}>Rating</label>
+                  <div className="rating-stars-preview" style={{ display: 'flex', gap: '2px' }}>
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={`star ${star <= currentSkillRating ? 'filled' : ''}`}
+                        onClick={() => setCurrentSkillRating(star)}
+                        title={`${star} star${star > 1 ? 's' : ''}`}
+                        style={{
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '18px',
+                          color: star <= currentSkillRating ? '#FFB800' : '#ddd'
+                        }}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={handleAddSkill} 
+                  className="btn-small"
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Add Skill
                 </button>
               </div>
-              <div className="tags">
-                {formData.required_skills?.map((skill) => (
-                  <span key={skill} className="tag">
-                    {skill}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSkill(skill)}
-                      className="tag-remove"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
+              
+              {/* Skills Table */}
+              {skillsWithRatings.length > 0 && (
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  overflow: 'hidden'
+                }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
+                      <th style={{
+                        padding: '12px',
+                        textAlign: 'left',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        color: '#333',
+                        borderRight: '1px solid #ddd'
+                      }}>
+                        Skill Name
+                      </th>
+                      <th style={{
+                        padding: '12px',
+                        textAlign: 'center',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        color: '#333',
+                        borderRight: '1px solid #ddd',
+                        width: '200px'
+                      }}>
+                        Proficiency Rating (1-5)
+                      </th>
+                      <th style={{
+                        padding: '12px',
+                        textAlign: 'center',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        color: '#333',
+                        width: '100px'
+                      }}>
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {skillsWithRatings.map((skill, idx) => (
+                      <tr key={skill.name} style={{
+                        borderBottom: idx < skillsWithRatings.length - 1 ? '1px solid #eee' : 'none',
+                        backgroundColor: idx % 2 === 0 ? '#fafafa' : '#fff'
+                      }}>
+                        <td style={{
+                          padding: '12px',
+                          fontSize: '14px',
+                          color: '#333',
+                          fontWeight: 500,
+                          borderRight: '1px solid #ddd'
+                        }}>
+                          {skill.name}
+                        </td>
+                        <td style={{
+                          padding: '12px',
+                          textAlign: 'center',
+                          borderRight: '1px solid #ddd'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', marginBottom: '6px' }}>
+                            {[1, 2, 3, 4, 5].map(star => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => handleUpdateSkillRating(skill.name, star)}
+                                style={{
+                                  backgroundColor: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '16px',
+                                  color: star <= skill.rating ? '#FFB800' : '#ddd',
+                                  padding: '0 2px'
+                                }}
+                                title={`${star} star${star > 1 ? 's' : ''}`}
+                              >
+                                ★
+                              </button>
+                            ))}
+                          </div>
+                          <span style={{ fontSize: '11px', color: '#999' }}>
+                            {skill.rating}/5
+                          </span>
+                        </td>
+                        <td style={{
+                          padding: '12px',
+                          textAlign: 'center'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill(skill.name)}
+                            style={{
+                              backgroundColor: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              padding: '6px 12px',
+                              borderRadius: '3px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#d32f2f')}
+                            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#f44336')}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {/* Locations */}

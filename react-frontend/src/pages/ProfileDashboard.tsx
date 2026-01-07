@@ -197,17 +197,65 @@ const ProfileDashboard: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Summary */}
+                  {pref.summary && (
+                    <div className="content-block">
+                      <div className="block-label">Summary</div>
+                      <p style={{ margin: '0', fontSize: '14px', color: '#555', lineHeight: '1.5' }}>
+                        {pref.summary}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Skills */}
                   {pref.required_skills && pref.required_skills.length > 0 && (
                     <div className="content-block">
-                      <div className="block-label">Required Skills ({pref.required_skills.length})</div>
-                      <div className="skill-tags">
-                        {pref.required_skills.map((skill) => (
-                          <span key={skill} className="skill-tag">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
+                      <div className="block-label">Required Skills</div>
+                      {(() => {
+                        try {
+                          // Parse JSON if it's a string
+                          const skillsData = typeof pref.required_skills === 'string' 
+                            ? JSON.parse(pref.required_skills)
+                            : pref.required_skills;
+                          
+                          // Display as list with ratings
+                          if (Array.isArray(skillsData) && skillsData.length > 0) {
+                            return (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                                {skillsData.map((skill: any) => {
+                                  const skillName = typeof skill === 'string' ? skill : skill.name;
+                                  const rating = typeof skill === 'string' ? 0 : (skill.rating || 0);
+                                  return (
+                                    <div key={skillName} style={{
+                                      backgroundColor: '#e3f2fd',
+                                      color: '#1976d2',
+                                      padding: '6px 12px',
+                                      borderRadius: '16px',
+                                      fontSize: '12px',
+                                      fontWeight: 500,
+                                      border: '1px solid #90caf9',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px'
+                                    }}>
+                                      <span>{skillName}</span>
+                                      {rating > 0 && (
+                                        <span style={{ fontSize: '10px', color: '#FFB800', marginLeft: '4px' }}>
+                                          {'★'.repeat(rating)}{'☆'.repeat(5 - rating)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          } else {
+                            return null;
+                          }
+                        } catch (e) {
+                          return null;
+                        }
+                      })()}
                     </div>
                   )}
 
@@ -227,7 +275,7 @@ const ProfileDashboard: React.FC = () => {
                 </div>
 
                 <div className="preference-footer">
-                  <small>Created {pref.created_at ? new Date(pref.created_at).toLocaleDateString() : 'N/A'}</small>
+                  <small>Created {pref.created_at ? new Date(pref.created_at as string | number).toLocaleDateString() : 'N/A'}</small>
                   <div className="action-buttons">
                     <button
                       className="btn-edit"
@@ -311,7 +359,18 @@ const ProfileDashboard: React.FC = () => {
               <p>
                 {new Set(
                   profile.job_preferences
-                    ?.flatMap((p) => p.required_skills || [])
+                    ?.flatMap((p) => {
+                      try {
+                        const skills = typeof p.required_skills === 'string' 
+                          ? JSON.parse(p.required_skills || '[]')
+                          : (p.required_skills || []);
+                        return Array.isArray(skills) && skills.length > 0 && typeof skills[0] === 'object'
+                          ? skills.map((s: any) => s.name)
+                          : skills;
+                      } catch {
+                        return p.required_skills || [];
+                      }
+                    })
                 ).size || 0}
               </p>
             </div>

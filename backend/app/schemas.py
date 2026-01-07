@@ -73,6 +73,7 @@ class VerifyOTPResponse(BaseModel):
 
 class SkillCreate(BaseModel):
     name: str
+    rating: Optional[int] = None  # 1-5 star rating
     level: Optional[str] = None
     category: Optional[str] = None
 

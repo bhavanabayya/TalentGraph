@@ -227,8 +227,37 @@ const CandidateDashboard: React.FC = () => {
         work_type: formData.work_type,
       };
       await candidateAPI.updateMe(updateData);
+      
+      // Handle skill changes
+      const currentSkillNames = profile?.skills?.map((s: any) => s.name) || [];
+      const selectedSkillNames = [
+        ...(profile?.skills?.map((s: any) => s.name) || []),
+        ...skillsInput.map((s: any) => s.name)
+      ];
+      
+      // Delete skills that were removed from the SkillSelector
+      const skillsToDelete = currentSkillNames.filter((name: string) => !selectedSkillNames.includes(name));
+      for (const skillName of skillsToDelete) {
+        const skillId = profile?.skills?.find((s: any) => s.name === skillName)?.id;
+        if (skillId) {
+          await candidateAPI.removeSkill(skillId);
+        }
+      }
+      
+      // Add new skills with ratings
+      if (skillsInput && skillsInput.length > 0) {
+        for (const skill of skillsInput) {
+          await candidateAPI.addSkill({
+            name: skill.name,
+            rating: skill.rating || 3,
+            category: 'technical'
+          });
+        }
+      }
+      
       setError('');
       alert('Profile updated successfully');
+      setSkillsInput([]); // Clear the input after saving
       await fetchAllData();
     } catch (err: any) {
       console.error('Update error:', err);
@@ -522,47 +551,145 @@ const CandidateDashboard: React.FC = () => {
                 {(profile?.skills?.length > 0 || skillsInput.length > 0) && (
                   <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e0e0e0' }}>
                     <p style={{ margin: '0 0 12px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Key Skills ({(profile?.skills?.length || 0) + skillsInput.length})</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {/* Display saved skills */}
-                      {profile?.skills?.map((skill: any) => (
-                        <div 
-                          key={`saved-${skill.id}`}
-                          style={{
-                            backgroundColor: skill.category === 'technical' ? '#e3f2fd' : '#f3e5f5',
-                            color: skill.category === 'technical' ? '#1976d2' : '#7b1fa2',
-                            padding: '6px 12px',
-                            borderRadius: '16px',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            border: skill.category === 'technical' ? '1px solid #90caf9' : '1px solid #e1bee7'
-                          }}
-                        >
-                          {skill.name}
-                          {skill.level && <span> ({skill.level})</span>}
-                        </div>
-                      ))}
-                      {/* Display newly added skills (not yet saved) */}
-                      {skillsInput.map((skill: any, idx: number) => (
-                        <div 
-                          key={`new-${idx}`}
-                          style={{
-                            backgroundColor: skill.category === 'technical' ? '#e3f2fd' : '#f3e5f5',
-                            color: skill.category === 'technical' ? '#1976d2' : '#7b1fa2',
-                            padding: '6px 12px',
-                            borderRadius: '16px',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            border: skill.category === 'technical' ? '2px solid #90caf9' : '2px solid #e1bee7',
-                            opacity: 0.85,
-                            position: 'relative'
-                          }}
-                        >
-                          {skill.name}
-                          {skill.level && <span> ({skill.level})</span>}
-                          <span style={{ marginLeft: '6px', fontSize: '10px', opacity: 0.7 }}>✨</span>
-                        </div>
-                      ))}
-                    </div>
+                    <table style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      overflow: 'hidden'
+                    }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
+                          <th style={{
+                            padding: '12px',
+                            textAlign: 'left',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: '#333',
+                            borderRight: '1px solid #ddd'
+                          }}>
+                            Skill Name
+                          </th>
+                          <th style={{
+                            padding: '12px',
+                            textAlign: 'center',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: '#333',
+                            borderRight: skillsInput.length > 0 ? '1px solid #ddd' : 'none',
+                            width: '200px'
+                          }}>
+                            Proficiency Rating
+                          </th>
+                          {skillsInput.length > 0 && (
+                            <th style={{
+                              padding: '12px',
+                              textAlign: 'center',
+                              fontWeight: 600,
+                              fontSize: '13px',
+                              color: '#333',
+                              width: '100px'
+                            }}>
+                              Action
+                            </th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Display saved skills */}
+                        {profile?.skills?.map((skill: any, idx: number) => (
+                          <tr key={`saved-${skill.id}`} style={{
+                            borderBottom: '1px solid #eee',
+                            backgroundColor: idx % 2 === 0 ? '#fafafa' : '#fff'
+                          }}>
+                            <td style={{
+                              padding: '12px',
+                              fontSize: '14px',
+                              color: '#333',
+                              fontWeight: 500,
+                              borderRight: '1px solid #ddd'
+                            }}>
+                              {skill.name}
+                            </td>
+                            <td style={{
+                              padding: '12px',
+                              textAlign: 'center',
+                              borderRight: skillsInput.length > 0 ? '1px solid #ddd' : 'none'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'center', gap: '2px' }}>
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <span key={star} style={{
+                                    color: star <= (skill.rating || 0) ? '#FFB800' : '#ddd',
+                                    fontSize: '14px'
+                                  }}>★</span>
+                                ))}
+                              </div>
+                              <span style={{ fontSize: '11px', color: '#999', marginTop: '4px', display: 'block' }}>
+                                {skill.rating || 0}/5
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {/* Display newly added skills (not yet saved) */}
+                        {skillsInput.map((skill: any, idx: number) => (
+                          <tr key={`new-${idx}`} style={{
+                            borderBottom: '1px solid #eee',
+                            backgroundColor: '#e8f5e9',
+                            opacity: 0.9
+                          }}>
+                            <td style={{
+                              padding: '12px',
+                              fontSize: '14px',
+                              color: '#333',
+                              fontWeight: 500,
+                              borderRight: '1px solid #ddd'
+                            }}>
+                              {skill.name} <span style={{ fontSize: '10px', opacity: 0.7 }}>✨ (Pending Save)</span>
+                            </td>
+                            <td style={{
+                              padding: '12px',
+                              textAlign: 'center',
+                              borderRight: '1px solid #ddd'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'center', gap: '2px' }}>
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <span key={star} style={{
+                                    color: star <= (skill.rating || 3) ? '#FFB800' : '#ddd',
+                                    fontSize: '14px'
+                                  }}>★</span>
+                                ))}
+                              </div>
+                              <span style={{ fontSize: '11px', color: '#999', marginTop: '4px', display: 'block' }}>
+                                {skill.rating || 3}/5
+                              </span>
+                            </td>
+                            <td style={{
+                              padding: '12px',
+                              textAlign: 'center'
+                            }}>
+                              <button
+                                onClick={() => setSkillsInput(skillsInput.filter((_: any, i: number) => i !== idx))}
+                                style={{
+                                  backgroundColor: '#f44336',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '6px 12px',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  transition: 'background-color 0.2s'
+                                }}
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#d32f2f')}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#f44336')}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -648,8 +775,16 @@ const CandidateDashboard: React.FC = () => {
                 <div className="form-group">
                   <label>Key Skills for Your Profile</label>
                   <SkillSelector
-                    selectedSkills={skillsInput}
-                    onSkillsChange={setSkillsInput}
+                    selectedSkills={[
+                      ...(profile?.skills?.map((s: any) => ({ name: s.name, rating: s.rating || 3 })) || []),
+                      ...skillsInput
+                    ]}
+                    onSkillsChange={(updatedSkills: any[]) => {
+                      // Filter out saved skills and keep only new ones
+                      const savedSkillNames = profile?.skills?.map((s: any) => s.name) || [];
+                      const newSkills = updatedSkills.filter((s: any) => !savedSkillNames.includes(s.name));
+                      setSkillsInput(newSkills);
+                    }}
                     technicalSkills={technicalSkills}
                     softSkills={softSkills}
                   />
