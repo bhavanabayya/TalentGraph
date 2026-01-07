@@ -475,7 +475,6 @@ const CandidateDashboard: React.FC = () => {
 
       <nav className="dashboard-tabs">
         <button className={`tab ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>Profile Dashboard</button>
-        <button className={`tab ${activeTab === 'skills' ? 'active' : ''}`} onClick={() => setActiveTab('skills')}>Skills</button>
         <button className={`tab ${activeTab === 'certifications' ? 'active' : ''}`} onClick={() => setActiveTab('certifications')}>Certifications</button>
         <button className={`tab ${activeTab === 'resumes' ? 'active' : ''}`} onClick={() => setActiveTab('resumes')}>Resumes</button>
         <button className={`tab ${activeTab === 'applications' ? 'active' : ''}`} onClick={() => setActiveTab('applications')}>Applications</button>
@@ -985,105 +984,6 @@ const CandidateDashboard: React.FC = () => {
                   </button>
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Skills Tab */}
-        {activeTab === 'skills' && (
-          <div className="skills-section">
-            <h2>Skills</h2>
-            
-            {/* Technical Skills Dropdown */}
-            <div className="skills-dropdown-group">
-              <h3>Technical Skills</h3>
-              <select 
-                value="" 
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleAddSkill(e.target.value, 'technical');
-                    e.target.value = ''; // Reset dropdown
-                  }
-                }}
-                className="skill-selector"
-              >
-                <option value="">+ Select a technical skill to add</option>
-                {technicalSkills.map((skill) => (
-                  <option key={skill} value={skill}>{skill}</option>
-                ))}
-              </select>
-              
-              {/* Technical Skills List */}
-              <div className="skills-list-filtered">
-                {profile?.skills && profile.skills.filter((s: any) => s.category === 'technical').length > 0 ? (
-                  <ul>
-                    {profile.skills.filter((s: any) => s.category === 'technical').map((skill: any) => (
-                      <li key={skill.id} className="skill-item">
-                        <div className="skill-info">
-                          <strong>{skill.name}</strong>
-                          {skill.level && <span className="level">{skill.level}</span>}
-                        </div>
-                        <button className="btn-delete" onClick={() => handleRemoveSkill(skill.id)}>Remove</button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="no-skills">No technical skills added yet</p>
-                )}
-              </div>
-            </div>
-
-            {/* Soft Skills Dropdown */}
-            <div className="skills-dropdown-group">
-              <h3>Soft Skills</h3>
-              <select 
-                value="" 
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleAddSkill(e.target.value, 'soft');
-                    e.target.value = ''; // Reset dropdown
-                  }
-                }}
-                className="skill-selector"
-              >
-                <option value="">+ Select a soft skill to add</option>
-                {softSkills.map((skill) => (
-                  <option key={skill} value={skill}>{skill}</option>
-                ))}
-              </select>
-              
-              {/* Soft Skills List */}
-              <div className="skills-list-filtered">
-                {profile?.skills && profile.skills.filter((s: any) => s.category === 'soft').length > 0 ? (
-                  <ul>
-                    {profile.skills.filter((s: any) => s.category === 'soft').map((skill: any) => (
-                      <li key={skill.id} className="skill-item">
-                        <div className="skill-info">
-                          <strong>{skill.name}</strong>
-                          {skill.level && <span className="level">{skill.level}</span>}
-                        </div>
-                        <button className="btn-delete" onClick={() => handleRemoveSkill(skill.id)}>Remove</button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="no-skills">No soft skills added yet</p>
-                )}
-              </div>
-            </div>
-
-            {/* Summary */}
-            <div style={{
-              backgroundColor: '#f0f7ff',
-              border: '1px solid #b3d9ff',
-              borderRadius: '6px',
-              padding: '12px 16px',
-              marginTop: '20px'
-            }}>
-              <p style={{ margin: 0, fontSize: '14px', color: '#0066cc' }}>
-                Total Skills: <strong>{profile?.skills?.length || 0}</strong>
-                {profile?.skills && ` (${profile.skills.filter((s: any) => s.category === 'technical').length} technical, ${profile.skills.filter((s: any) => s.category === 'soft').length} soft)`}
-              </p>
             </div>
           </div>
         )}
