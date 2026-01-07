@@ -92,20 +92,21 @@
 }
 
 .btn-manage-prefs {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
   color: white;
   padding: 12px 24px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: background 0.3s;
   white-space: nowrap;
 }
 
 .btn-manage-prefs:hover {
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 86, 179, 0.4);
 }
 
 /* Preferences Overview */
@@ -158,23 +159,23 @@
 }
 
 .btn-primary {
-  background: #007bff;
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
   color: white;
   padding: 10px 24px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background 0.3s;
   white-space: nowrap;
 }
 
 .btn-primary:hover {
-  background: #0056b3;
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
 }
 
 .btn-primary-large {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
   color: white;
   padding: 14px 32px;
   border: none;
@@ -182,12 +183,13 @@
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: background 0.3s;
 }
 
 .btn-primary-large:hover {
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 20px rgba(0, 86, 179, 0.4);
 }
 
 /* Empty State */
@@ -391,34 +393,31 @@
 
 .btn-edit,
 .btn-delete {
-  padding: 6px 12px;
+  padding: 10px 24px;
   border: none;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: background 0.3s;
+  color: white;
   white-space: nowrap;
 }
 
 .btn-edit {
-  background: #cfe9ff;
-  color: #0056b3;
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
 }
 
 .btn-edit:hover {
-  background: #99d1ff;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
 }
 
 .btn-delete {
-  background: #f5c2c7;
-  color: #721c24;
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
 }
 
 .btn-delete:hover {
-  background: #f1b0b7;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
 }
 
 /* Delete Confirmation */
@@ -455,22 +454,22 @@
 }
 
 .btn-confirm-yes {
-  background: #721c24;
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
   color: white;
 }
 
 .btn-confirm-yes:hover {
-  background: #5a1319;
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
   transform: translateY(-1px);
 }
 
 .btn-confirm-no {
-  background: #d3d3d3;
-  color: #333;
+  background: linear-gradient(135deg, #4a9eff 0%, #b3d9ff 100%);
+  color: white;
 }
 
 .btn-confirm-no:hover {
-  background: #b0b0b0;
+  background: linear-gradient(135deg, #2b7fd9 0%, #80c3ff 100%);
   transform: translateY(-1px);
 }
 

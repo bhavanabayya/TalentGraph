@@ -183,22 +183,23 @@
 }
 
 .btn-pass {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: #0056b3;
+  color: white;
 }
 
 .btn-pass:hover {
-  background: #e5e7eb;
+  background: #003d82;
   transform: scale(1.05);
 }
 
 .btn-like {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #4a9eff;
   color: white;
 }
 
 .btn-like:hover {
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background: #2b7fd9;
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
   transform: scale(1.05);
 }
 

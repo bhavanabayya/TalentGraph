@@ -12,6 +12,7 @@ import SignUpPage from './pages/SignUpPage.tsx';
 import SignInPage from './pages/SignInPage.tsx';
 import OTPVerifyPage from './pages/OTPVerifyPage.tsx';
 import CandidateDashboard from './pages/CandidateDashboard.tsx';
+import EditProfilePage from './pages/EditProfilePage.tsx';
 import CompanyDashboard from './pages/CompanyDashboard.tsx';
 import JobPreferencesPage from './pages/JobPreferencesPage.tsx';
 import ProfileDashboard from './pages/ProfileDashboard.tsx';
@@ -74,6 +75,16 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute
               element={<CandidateDashboard />}
+              requiredUserType="candidate"
+            />
+          }
+        />
+
+        <Route
+          path="/edit-profile"
+          element={
+            <ProtectedRoute
+              element={<EditProfilePage />}
               requiredUserType="candidate"
             />
           }

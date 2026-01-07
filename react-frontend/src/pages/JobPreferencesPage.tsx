@@ -44,7 +44,6 @@ const JobPreferencesPage: React.FC = () => {
     product_author_id: 1, // Oracle only
     product_id: 0,
     roles: [],
-    seniority_level: '',
     years_experience_min: undefined,
     years_experience_max: undefined,
     hourly_rate_min: undefined,
@@ -54,6 +53,7 @@ const JobPreferencesPage: React.FC = () => {
     location_preferences: [],
     availability: '',
     preference_name: '',
+    summary: '',
   });
 
   // Skills state with ratings
@@ -87,22 +87,62 @@ const JobPreferencesPage: React.FC = () => {
       setLoading(true);
       // Fetch preferences
       const prefsRes = await preferencesAPI.getMyPreferences();
-      setPreferences(prefsRes.data);
-
-      // Fetch ontology data - Oracle products and roles
-      const authorsRes = await jobRolesAPI.getAuthors();
-      const oracleAuthor = authorsRes.data.find((a: any) => a.name === 'Oracle');
-      const oracleId = oracleAuthor?.id || 1;
+      setPreferences(Array.isArray(prefsRes.data) ? prefsRes.data : []);
 
       // Get Oracle products
       const productsRes = await jobRolesAPI.getProducts('Oracle');
+      const productsResponseData = productsRes.data;
+      
+      // Extract products array from response
+      let productsArray = [];
+      if (Array.isArray(productsResponseData)) {
+        productsArray = productsResponseData;
+      } else if (productsResponseData?.products && Array.isArray(productsResponseData.products)) {
+        // API returns { author: "Oracle", products: ["SaaS", "E-Business Suite", ...] }
+        productsArray = productsResponseData.products.map((name: string, index: number) => ({
+          id: index + 1,
+          name: name,
+          author_id: 1
+        }));
+      }
+      
+      // Get skills and flatten them into a simple array
       const skillsRes = await jobRolesAPI.getSkills();
+      const skillsResponseData = skillsRes.data;
+      
+      let allSkillsArray: string[] = [];
+      if (skillsResponseData) {
+        // Extract base skills
+        if (skillsResponseData.base_skills) {
+          Object.values(skillsResponseData.base_skills).forEach((categorySkills: any) => {
+            if (Array.isArray(categorySkills)) {
+              allSkillsArray = [...allSkillsArray, ...categorySkills];
+            }
+          });
+        }
+        
+        // Extract role-specific skills
+        if (skillsResponseData.role_skills?.Oracle) {
+          Object.values(skillsResponseData.role_skills.Oracle).forEach((productSkills: any) => {
+            if (typeof productSkills === 'object') {
+              Object.values(productSkills).forEach((roleSkills: any) => {
+                if (Array.isArray(roleSkills)) {
+                  allSkillsArray = [...allSkillsArray, ...roleSkills];
+                }
+              });
+            }
+          });
+        }
+        
+        // Remove duplicates and sort
+        allSkillsArray = [...new Set(allSkillsArray)].sort();
+      }
 
       setOntology({
-        products: productsRes.data,
+        products: productsArray,
         roles: {},
-        skills: skillsRes.data,
-        oracleAuthorId: oracleId,
+        skills: allSkillsArray,
+        oracleAuthorId: 1,
       });
 
       setError('');
@@ -120,9 +160,24 @@ const JobPreferencesPage: React.FC = () => {
       const product = ontology.products.find((p) => p.id === productId);
       if (product) {
         const rolesRes = await jobRolesAPI.getRoles('Oracle', product.name);
+        const rolesResponseData = rolesRes.data;
+        
+        // Extract roles array from response
+        let rolesArray = [];
+        if (Array.isArray(rolesResponseData)) {
+          rolesArray = rolesResponseData;
+        } else if (rolesResponseData?.roles && Array.isArray(rolesResponseData.roles)) {
+          // API returns { author: "Oracle", product: "SaaS", roles: [...] }
+          rolesArray = rolesResponseData.roles.map((name: string, index: number) => ({
+            id: index + 1,
+            name: name,
+            product_id: productId
+          }));
+        }
+        
         setOntology({
           ...ontology,
-          roles: { ...ontology.roles, [product.name]: rolesRes.data },
+          roles: { ...ontology.roles, [product.name]: rolesArray },
         });
       }
     } catch (err) {
@@ -191,10 +246,27 @@ const JobPreferencesPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Convert skillsWithRatings to the format expected by the backend
-      const submissionData = {
-        ...formData,
-        required_skills: skillsWithRatings.length > 0 ? JSON.stringify(skillsWithRatings) : undefined,
+      // Map frontend fields to backend schema
+      const selectedProduct = ontology.products.find(p => p.id === formData.product_id);
+      
+      // Get primary role - use first selected role or find from roles array
+      let primaryRoleName = '';
+      if (formData.roles && formData.roles.length > 0) {
+        primaryRoleName = formData.roles[0]; // Use first selected role
+      }
+      
+      const submissionData: any = {
+        preference_name: formData.preference_name,
+        product: selectedProduct?.name || '',
+        primary_role: primaryRoleName,
+        years_experience: formData.years_experience_min,
+        rate_min: formData.hourly_rate_min,
+        rate_max: formData.hourly_rate_max,
+        work_type: formData.work_type,
+        location: formData.location_preferences?.join(', ') || '',
+        availability: formData.availability,
+        summary: formData.summary,
+        required_skills: skillsWithRatings.length > 0 ? skillsWithRatings : [],
       };
       
       if (editingId) {
@@ -210,7 +282,21 @@ const JobPreferencesPage: React.FC = () => {
       navigate('/profile-dashboard');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save preference');
+      // Handle validation errors
+      if (err.response?.data?.detail) {
+        if (Array.isArray(err.response.data.detail)) {
+          // Pydantic validation errors
+          const errorMessages = err.response.data.detail.map((e: any) => e.msg).join(', ');
+          setError(errorMessages);
+        } else if (typeof err.response.data.detail === 'string') {
+          setError(err.response.data.detail);
+        } else {
+          setError('Validation error occurred');
+        }
+      } else {
+        setError('Failed to save preference');
+      }
+      console.error('Form submission error:', err.response?.data);
     }
   };
 
@@ -262,7 +348,6 @@ const JobPreferencesPage: React.FC = () => {
       product_author_id: 1,
       product_id: 0,
       roles: [],
-      seniority_level: '',
       years_experience_min: undefined,
       years_experience_max: undefined,
       hourly_rate_min: undefined,
@@ -272,6 +357,7 @@ const JobPreferencesPage: React.FC = () => {
       location_preferences: [],
       availability: '',
       preference_name: '',
+      summary: '',
     });
     setEditingId(null);
     setSelectedSkill('');
@@ -287,8 +373,8 @@ const JobPreferencesPage: React.FC = () => {
   return (
     <div className="preferences-page">
       <div className="preferences-header">
-        <h1>Oracle Profiles</h1>
-        <p>Create and manage your Oracle career profiles by product, role, experience, and rate</p>
+        <h1>Job Profiles</h1>
+        <p>Create and manage your career profiles by product, role, experience, and rate</p>
         <button className="btn-primary" onClick={() => { resetForm(); setShowForm(!showForm); }}>
           {showForm ? 'Cancel' : '+ Create New Profile'}
         </button>
@@ -361,49 +447,40 @@ const JobPreferencesPage: React.FC = () => {
             </div>
 
             {/* Experience */}
-            <div className="form-row">
-              <div className="form-group">
-                <label>Min Experience (years)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.years_experience_min || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      years_experience_min: e.target.value ? Number(e.target.value) : undefined,
-                    })
-                  }
-                />
-              </div>
-              <div className="form-group">
-                <label>Max Experience (years)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.years_experience_max || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      years_experience_max: e.target.value ? Number(e.target.value) : undefined,
-                    })
-                  }
-                />
-              </div>
+            <div className="form-group">
+              <label>Years of Experience</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="e.g., 5"
+                value={formData.years_experience_min || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    years_experience_min: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+              />
             </div>
 
-            {/* Seniority Level */}
+            {/* Professional Summary */}
             <div className="form-group">
-              <label>Seniority Level</label>
-              <select
-                value={formData.seniority_level || ''}
-                onChange={(e) => setFormData({ ...formData, seniority_level: e.target.value })}
-              >
-                <option value="">Select Level</option>
-                <option value="Junior">Junior</option>
-                <option value="Mid">Mid</option>
-                <option value="Senior">Senior</option>
-              </select>
+              <label>Professional Summary</label>
+              <textarea
+                placeholder="Describe your experience and expertise in this role..."
+                value={formData.summary || ''}
+                onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical'
+                }}
+              />
             </div>
 
             {/* Rate */}
@@ -524,48 +601,57 @@ const JobPreferencesPage: React.FC = () => {
               
               {/* Skills Table */}
               {skillsWithRatings.length > 0 && (
-                <table style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
-                      <th style={{
-                        padding: '12px',
-                        textAlign: 'left',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        color: '#333',
-                        borderRight: '1px solid #ddd'
-                      }}>
-                        Skill Name
-                      </th>
-                      <th style={{
-                        padding: '12px',
-                        textAlign: 'center',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        color: '#333',
-                        borderRight: '1px solid #ddd',
-                        width: '200px'
-                      }}>
-                        Proficiency Rating (1-5)
-                      </th>
-                      <th style={{
-                        padding: '12px',
-                        textAlign: 'center',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        color: '#333',
-                        width: '100px'
-                      }}>
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
+                <div>
+                  <h4 style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 600, 
+                    marginBottom: '12px',
+                    color: '#333'
+                  }}>
+                    Selected Skills ({skillsWithRatings.length})
+                  </h4>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
+                        <th style={{
+                          padding: '12px',
+                          textAlign: 'left',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          color: '#333',
+                          borderRight: '1px solid #ddd'
+                        }}>
+                          Skill Name
+                        </th>
+                        <th style={{
+                          padding: '12px',
+                          textAlign: 'center',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          color: '#333',
+                          borderRight: '1px solid #ddd',
+                          width: '200px'
+                        }}>
+                          Proficiency Rating (1-5)
+                        </th>
+                        <th style={{
+                          padding: '12px',
+                          textAlign: 'center',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          color: '#333',
+                          width: '100px'
+                        }}>
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
                   <tbody>
                     {skillsWithRatings.map((skill, idx) => (
                       <tr key={skill.name} style={{
@@ -638,6 +724,7 @@ const JobPreferencesPage: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
 
@@ -703,7 +790,7 @@ const JobPreferencesPage: React.FC = () => {
 
       {/* Profiles List */}
       <div className="preferences-list">
-        <h2>Your Oracle Profiles ({preferences.length})</h2>
+        <h2>Your Job Profiles ({preferences.length})</h2>
         {preferences.length === 0 ? (
           <p className="empty-message">No profiles yet. Create one to get started!</p>
         ) : (
@@ -711,57 +798,28 @@ const JobPreferencesPage: React.FC = () => {
             {preferences.map((pref) => (
               <div key={pref.id} className="preference-card">
                 <div className="card-header">
-                  <h3>{pref.preference_name}</h3>
+                  <h3>{pref.preference_name || pref.primary_role}</h3>
                   <span className={`status ${pref.is_active ? 'active' : 'inactive'}`}>
                     {pref.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 <div className="card-body">
                   <div className="card-section">
-                    <strong>Roles:</strong>
-                    <div className="tags">
-                      {pref.roles?.map((role) => (
-                        <span key={role} className="tag-role">
-                          {role}
-                        </span>
-                      ))}
-                    </div>
+                    <strong>Role:</strong>
+                    <div style={{ marginTop: '4px' }}>{pref.primary_role || 'N/A'}</div>
                   </div>
 
-                  {pref.seniority_level && (
+                  {pref.product && (
                     <div className="card-section">
-                      <strong>Seniority:</strong> {pref.seniority_level}
+                      <strong>Product Type:</strong>
+                      <div style={{ marginTop: '4px' }}>{pref.product}</div>
                     </div>
                   )}
 
-                  {pref.years_experience_min || pref.years_experience_max ? (
+                  {pref.location && (
                     <div className="card-section">
-                      <strong>Experience:</strong> {pref.years_experience_min}-{pref.years_experience_max} years
-                    </div>
-                  ) : null}
-
-                  {pref.hourly_rate_min || pref.hourly_rate_max ? (
-                    <div className="card-section">
-                      <strong>Rate:</strong> ${pref.hourly_rate_min}-${pref.hourly_rate_max}/hr
-                    </div>
-                  ) : null}
-
-                  {pref.work_type && (
-                    <div className="card-section">
-                      <strong>Work Type:</strong> {pref.work_type}
-                    </div>
-                  )}
-
-                  {pref.required_skills && pref.required_skills.length > 0 && (
-                    <div className="card-section">
-                      <strong>Required Skills:</strong>
-                      <div className="tags">
-                        {pref.required_skills.map((skill) => (
-                          <span key={skill} className="tag-skill">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
+                      <strong>Job Location:</strong>
+                      <div style={{ marginTop: '4px' }}>📍 {pref.location}</div>
                     </div>
                   )}
                 </div>

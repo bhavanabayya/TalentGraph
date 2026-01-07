@@ -5,7 +5,7 @@ import json
 
 from ..database import get_session
 from ..models import Candidate, CandidateJobPreference
-from ..schemas import JobPreferenceCreate, JobPreferenceUpdate, JobPreferenceRead
+from ..schemas import JobPreferenceCreate, JobPreferenceUpdate, JobPreferenceRead, CandidateReadWithPreferences
 from ..security import require_candidate
 
 
@@ -81,6 +81,27 @@ def get_my_preferences(
     ).all()
     
     return preferences
+
+
+@router.get("/my-profile", response_model=CandidateReadWithPreferences)
+def get_profile_with_preferences(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Get candidate profile with all job preferences."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    return candidate
 
 
 @router.get("/{preference_id}", response_model=JobPreferenceRead)

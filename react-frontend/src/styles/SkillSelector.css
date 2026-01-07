@@ -65,11 +65,11 @@
 }
 
 .btn-remove-skill:hover {
-  background-color: #da190b !important;
+  background-color: #0056b3 !important;
 }
 
 .btn-add-skill:hover {
-  background-color: #45a049 !important;
+  background-color: #4a9eff !important;
 }
 
 @media (max-width: 768px) {

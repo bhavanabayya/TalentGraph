@@ -201,6 +201,7 @@ class JobPreferenceRead(BaseModel):
     location: Optional[str] = None
     availability: Optional[str] = None
     summary: Optional[str] = None
+    required_skills: Optional[str] = None  # JSON string
     is_active: bool
     created_at: datetime
 
@@ -469,19 +470,17 @@ class CandidateJobPreferenceRead(BaseModel):
     """Read job preference"""
     id: int
     candidate_id: int
-    product_author_id: int
-    product_id: int
-    roles: List[str]
-    seniority_level: Optional[str]
-    years_experience_min: Optional[int]
-    years_experience_max: Optional[int]
-    hourly_rate_min: Optional[float]
-    hourly_rate_max: Optional[float]
-    required_skills: Optional[List[str]]
-    work_type: Optional[str]
-    location_preferences: Optional[List[str]]
-    availability: Optional[str]
     preference_name: Optional[str]
+    product: str
+    primary_role: str
+    years_experience: Optional[int]
+    rate_min: Optional[float]
+    rate_max: Optional[float]
+    work_type: Optional[str]
+    location: Optional[str]
+    availability: Optional[str]
+    summary: Optional[str]
+    required_skills: Optional[str]  # JSON string
     is_active: bool
     created_at: datetime
     updated_at: datetime

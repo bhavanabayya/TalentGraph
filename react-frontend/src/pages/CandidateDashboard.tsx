@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   candidateAPI,
   jobRolesAPI,
-  jobsAPI,
   preferencesAPI,
   default as apiClient,
 } from '../api/client';
 import { useAuth } from '../context/authStore';
-import { JobPreferenceCard, JobPreferencesList } from '../components/JobPreferencesCard';
 import { SkillSelector } from '../components/SkillSelector';
 import '../styles/Dashboard.css';
 
@@ -44,12 +42,14 @@ const CandidateDashboard: React.FC = () => {
   const [saving, setSaving] = useState(false);
   
   // Multiple job profiles state
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [jobProfiles, setJobProfiles] = useState<any[]>([]);
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
   
   // Author/Product/Role dropdowns
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [authors, setAuthors] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
@@ -58,6 +58,7 @@ const CandidateDashboard: React.FC = () => {
   
   // Skills state for main profile and job preferences
   const [skillsInput, setSkillsInput] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [prefSkillsInput, setPrefSkillsInput] = useState<any[]>([]);
   
   // Preference form state
@@ -87,6 +88,7 @@ const CandidateDashboard: React.FC = () => {
   
   // Resume upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const editMainProfileRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchAllData();
@@ -112,7 +114,7 @@ const CandidateDashboard: React.FC = () => {
       setApplications(Array.isArray(appsRes.data) ? appsRes.data : []);
       
       // Handle job profiles
-      const jobProfilesData = Array.isArray(jobProfilesRes.data) ? jobProfilesRes.data : jobProfilesRes.data?.data || [];
+      const jobProfilesData = Array.isArray(jobProfilesRes?.data) ? jobProfilesRes.data : (jobProfilesRes as any)?.data?.data || [];
       setJobProfiles(jobProfilesData);
       
       // Handle authors response - could be array or wrapped in data
@@ -361,6 +363,7 @@ const CandidateDashboard: React.FC = () => {
 
   // ========== Multiple Job Profiles Handlers ==========
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleAddProfile = () => {
     setFormMode('add');
     setEditingProfile({
@@ -380,6 +383,7 @@ const CandidateDashboard: React.FC = () => {
     setShowProfileForm(true);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleEditProfile = (profile: any) => {
     setFormMode('edit');
     setEditingProfile(profile);
@@ -413,11 +417,11 @@ const CandidateDashboard: React.FC = () => {
       };
 
       if (formMode === 'add') {
-        await preferencesAPI.create(profileData);
+        await preferencesAPI.create(profileData as any);
         setError('');
         alert('Profile created successfully!');
       } else {
-        await preferencesAPI.update(editingProfile.id, profileData);
+        await preferencesAPI.update(editingProfile.id, profileData as any);
         setError('');
         alert('Profile updated successfully!');
       }
@@ -433,6 +437,7 @@ const CandidateDashboard: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDeleteProfile = async (preferenceId: number) => {
     try {
       setSaving(true);
@@ -446,6 +451,10 @@ const CandidateDashboard: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEditProfileClick = () => {
+    navigate('/edit-profile');
   };
 
   const handleCancelProfileForm = () => {
@@ -487,13 +496,38 @@ const CandidateDashboard: React.FC = () => {
               
               {/* Profile Summary Card */}
               <div style={{
-                backgroundColor: '#f8f9fa',
-                border: '1px solid #e0e0e0',
+                background: 'linear-gradient(135deg, rgba(74, 158, 255, 0.1) 0%, rgba(43, 127, 217, 0.08) 100%)',
+                border: '2px solid #4a9eff',
                 borderRadius: '8px',
                 padding: '24px',
                 marginBottom: '32px'
               }}>
-                <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Profile Summary</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 0 }}>Profile Summary</h3>
+                  <button
+                    onClick={handleEditProfileClick}
+                    style={{
+                      background: 'linear-gradient(135deg, #0056b3 0%, #4a9eff 100%)',
+                      color: 'white',
+                      padding: '8px 16px',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'background 0.3s',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLElement).style.background = 'linear-gradient(135deg, #003d82 0%, #2b7fd9 100%)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLElement).style.background = 'linear-gradient(135deg, #0056b3 0%, #4a9eff 100%)';
+                    }}
+                  >
+                    ✎ Edit Profile
+                  </button>
+                </div>
                 <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>A quick view of your candidate information and preferences.</p>
                 
                 {/* Name and Role */}
@@ -694,7 +728,7 @@ const CandidateDashboard: React.FC = () => {
                 )}
               </div>
 
-              <h3>Edit Main Profile</h3>
+              <h3 ref={editMainProfileRef}>Edit Main Profile</h3>
               <div className="form-group">
                 <label>Name</label>
                 <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
@@ -1037,19 +1071,22 @@ const CandidateDashboard: React.FC = () => {
                       className="btn btn-secondary"
                       onClick={handleCancelProfileForm}
                       disabled={saving}
-                      style={{ backgroundColor: '#6c757d' }}
                     >
                       Cancel
                     </button>
                   </div>
                 </div>
               ) : (
-                <JobPreferencesList
-                  preferences={jobProfiles}
-                  onEdit={handleEditProfile}
-                  onDelete={handleDeleteProfile}
-                  onAddNew={handleAddProfile}
-                />
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#666' }}>
+                  <p style={{ fontSize: '16px', marginBottom: '10px' }}>Job preferences are now managed on a dedicated page.</p>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => navigate('/job-preferences')}
+                    style={{ marginTop: '10px' }}
+                  >
+                    Go to Job Preferences
+                  </button>
+                </div>
               )}
             </div>
           </div>

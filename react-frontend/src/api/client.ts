@@ -89,11 +89,12 @@ export interface JobPreference {
   years_experience_max?: number;
   hourly_rate_min?: number;
   hourly_rate_max?: number;
-  required_skills?: string[];
+  required_skills?: string[] | string;
   work_type?: string;
   location_preferences?: string[];
   availability?: string;
   preference_name?: string;
+  summary?: string;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
