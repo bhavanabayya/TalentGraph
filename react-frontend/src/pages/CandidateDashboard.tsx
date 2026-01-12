@@ -8,6 +8,7 @@ import {
 } from '../api/client';
 import { useAuth } from '../context/authStore';
 import { SkillSelector } from '../components/SkillSelector';
+import SocialLinksWidget from '../components/SocialLinksWidget';
 import '../styles/Dashboard.css';
 
 // Technical and soft skills lists
@@ -399,10 +400,29 @@ const CandidateDashboard: React.FC = () => {
       return;
     }
 
+    // Check for duplicate job type (if not editing the same profile)
+    const isDuplicateWorkType = jobProfiles.some((profile) => {
+      // If we're editing, don't count the current profile
+      if (formMode === 'edit' && profile.id === editingProfile.id) {
+        return false;
+      }
+      return profile.work_type === editingProfile.work_type && editingProfile.work_type;
+    });
+
+    if (isDuplicateWorkType) {
+      setError(`A profile with job type "${editingProfile.work_type}" already exists. Job types must be unique.`);
+      return;
+    }
+
     try {
       setSaving(true);
+      // Auto-set preference name to role name if not explicitly set
+      const preferenceName = editingProfile.preference_name?.trim() ? 
+        editingProfile.preference_name : 
+        editingProfile.primary_role;
+
       const profileData = {
-        preference_name: editingProfile.preference_name || `${editingProfile.product} - ${editingProfile.primary_role}`,
+        preference_name: preferenceName,
         product: editingProfile.product,
         primary_role: editingProfile.primary_role,
         years_experience: editingProfile.years_experience,
@@ -537,6 +557,11 @@ const CandidateDashboard: React.FC = () => {
                     <p style={{ margin: 0, fontSize: '16px', fontWeight: 500, color: '#333' }}>{profile?.residential_address || '—'}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Social Links Widget */}
+              <div style={{ marginTop: '30px' }}>
+                <SocialLinksWidget editable={false} />
               </div>
             </div>
           </div>
@@ -804,14 +829,19 @@ const CandidateDashboard: React.FC = () => {
                   </h3>
                   
                   <div className="form-group">
-                    <label>Profile Name (Optional)</label>
+                    <label>Profile Name</label>
                     <input
                       type="text"
-                      placeholder="e.g., Oracle Fusion - Senior Developer"
-                      value={editingProfile.preference_name || ''}
+                      placeholder="Auto-generated from role"
+                      value={editingProfile.preference_name || editingProfile.primary_role || ''}
                       onChange={(e) => setEditingProfile({ ...editingProfile, preference_name: e.target.value })}
+                      disabled={!editingProfile.primary_role}
+                      style={{ 
+                        backgroundColor: !editingProfile.primary_role ? '#f5f5f5' : 'white',
+                        cursor: !editingProfile.primary_role ? 'not-allowed' : 'text'
+                      }}
                     />
-                    <small style={{ color: '#999' }}>If left empty, will be auto-generated from product and role</small>
+                    <small style={{ color: '#999' }}>Auto-sets to the role name. Select a role first.</small>
                   </div>
 
                   <div className="form-group">
@@ -851,7 +881,14 @@ const CandidateDashboard: React.FC = () => {
                       <label>Primary Role *</label>
                       <select
                         value={editingProfile.primary_role || ''}
-                        onChange={(e) => setEditingProfile({ ...editingProfile, primary_role: e.target.value })}
+                        onChange={(e) => {
+                          // Auto-set preference name to role when role is selected
+                          setEditingProfile({ 
+                            ...editingProfile, 
+                            primary_role: e.target.value,
+                            preference_name: e.target.value  // Set name same as role
+                          });
+                        }}
                         onFocus={() => handleLoadRoles('Oracle', editingProfile.product)}
                       >
                         <option value="">Select Role...</option>
@@ -891,7 +928,7 @@ const CandidateDashboard: React.FC = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>Work Type</label>
+                    <label>Work Type *</label>
                     <select
                       value={editingProfile.work_type || ''}
                       onChange={(e) => setEditingProfile({ ...editingProfile, work_type: e.target.value })}
@@ -901,6 +938,7 @@ const CandidateDashboard: React.FC = () => {
                       <option value="On-site">On-site</option>
                       <option value="Hybrid">Hybrid</option>
                     </select>
+                    <small style={{ color: '#999' }}>Note: Work type must be unique across all your role profiles.</small>
                   </div>
 
                   <div className="form-group">
@@ -916,11 +954,25 @@ const CandidateDashboard: React.FC = () => {
                   <div className="form-group">
                     <label>Availability</label>
                     <input
-                      type="text"
-                      placeholder="e.g., Immediately, 2 weeks, Starting Jan 15"
+                      type="date"
                       value={editingProfile.availability || ''}
-                      onChange={(e) => setEditingProfile({ ...editingProfile, availability: e.target.value })}
+                      onChange={(e) => {
+                        const date = e.target.value;
+                        if (date) {
+                          const dateObj = new Date(date);
+                          const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          });
+                          setEditingProfile({ ...editingProfile, availability: formattedDate });
+                        } else {
+                          setEditingProfile({ ...editingProfile, availability: '' });
+                        }
+                      }}
+                      style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
                     />
+                    <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>Select your availability date</small>
                   </div>
 
                   <div className="form-group">

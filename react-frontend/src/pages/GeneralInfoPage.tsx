@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { candidateAPI } from '../api/client';
 import { useAuth } from '../context/authStore';
+import SocialLinksWidget from '../components/SocialLinksWidget';
 import '../styles/Dashboard.css';
 
 const GeneralInfoPage: React.FC = () => {
@@ -134,6 +135,11 @@ const GeneralInfoPage: React.FC = () => {
                     <p style={{ margin: 0, fontSize: '16px', fontWeight: 500, color: '#333' }}>{profile.residential_address || '—'}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Social Links Widget */}
+              <div style={{ marginTop: '30px' }}>
+                <SocialLinksWidget editable={false} />
               </div>
             </div>
           )}

@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
 from ..database import get_session
-from ..models import Candidate, Skill, Certification, Resume, User, Application, JobPost
+from ..models import Candidate, Skill, Certification, Resume, SocialLink, User, Application, JobPost
 from ..schemas import (
     CandidateCreate,
     CandidateRead,
@@ -15,6 +15,8 @@ from ..schemas import (
     SkillRead,
     CertificationCreate,
     CertificationRead,
+    SocialLinkCreate,
+    SocialLinkRead,
     RoleFitRequest,
     RoleFitResponse,
     ResumeRead,
@@ -306,6 +308,168 @@ def list_my_certifications(
     ).all()
     
     return [CertificationRead(id=c.id, name=c.name, issuer=c.issuer, year=c.year) for c in certs]
+
+
+# ============================================================================
+# SOCIAL LINKS MANAGEMENT
+# ============================================================================
+
+@router.post("/me/social-links", response_model=SocialLinkRead)
+def add_social_link(
+    social_link: SocialLinkCreate,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Add a social media or portfolio link."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+    
+    new_link = SocialLink(
+        candidate_id=candidate.id,
+        platform=social_link.platform,
+        url=social_link.url,
+        display_name=social_link.display_name
+    )
+    session.add(new_link)
+    session.commit()
+    session.refresh(new_link)
+    
+    return SocialLinkRead(
+        id=new_link.id,
+        platform=new_link.platform,
+        url=new_link.url,
+        display_name=new_link.display_name,
+        created_at=new_link.created_at.isoformat()
+    )
+
+
+@router.get("/me/social-links", response_model=list[SocialLinkRead])
+def list_my_social_links(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Get all social links for authenticated candidate."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+    
+    links = session.exec(
+        select(SocialLink).where(SocialLink.candidate_id == candidate.id)
+    ).all()
+    
+    return [
+        SocialLinkRead(
+            id=link.id,
+            platform=link.platform,
+            url=link.url,
+            display_name=link.display_name,
+            created_at=link.created_at.isoformat()
+        )
+        for link in links
+    ]
+
+
+@router.put("/me/social-links/{social_link_id}", response_model=SocialLinkRead)
+def update_social_link(
+    social_link_id: int,
+    update: SocialLinkCreate,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Update a social link."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+    
+    link = session.exec(
+        select(SocialLink).where(
+            (SocialLink.id == social_link_id) &
+            (SocialLink.candidate_id == candidate.id)
+        )
+    ).first()
+    
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Social link not found"
+        )
+    
+    link.platform = update.platform
+    link.url = update.url
+    link.display_name = update.display_name
+    
+    session.add(link)
+    session.commit()
+    session.refresh(link)
+    
+    return SocialLinkRead(
+        id=link.id,
+        platform=link.platform,
+        url=link.url,
+        display_name=link.display_name,
+        created_at=link.created_at.isoformat()
+    )
+
+
+@router.delete("/me/social-links/{social_link_id}", status_code=204)
+def delete_social_link(
+    social_link_id: int,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Delete a social link."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+    
+    link = session.exec(
+        select(SocialLink).where(
+            (SocialLink.id == social_link_id) &
+            (SocialLink.candidate_id == candidate.id)
+        )
+    ).first()
+    
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Social link not found"
+        )
+    
+    session.delete(link)
+    session.commit()
 
 
 # ============================================================================

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { candidateAPI } from '../api/client';
 import { useAuth } from '../context/authStore';
+import SocialLinksWidget from '../components/SocialLinksWidget';
 import '../styles/Dashboard.css';
 
 const EditGeneralInfoPage: React.FC = () => {
@@ -191,6 +192,9 @@ const EditGeneralInfoPage: React.FC = () => {
               </div>
             </form>
           </div>
+
+          {/* Social Links Widget */}
+          <SocialLinksWidget editable={true} />
         </div>
       </div>
     </div>

@@ -230,11 +230,25 @@ const EditProfilePage: React.FC = () => {
             <div className="form-group">
               <label>Availability</label>
               <input 
-                type="text" 
-                placeholder="e.g., Immediately, 2 weeks, Starting Jan 15, etc." 
+                type="date" 
                 value={formData.availability || ''} 
-                onChange={(e) => setFormData({ ...formData, availability: e.target.value })} 
+                onChange={(e) => {
+                  const date = e.target.value;
+                  if (date) {
+                    const dateObj = new Date(date);
+                    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    });
+                    setFormData({ ...formData, availability: formattedDate });
+                  } else {
+                    setFormData({ ...formData, availability: '' });
+                  }
+                }}
+                style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
               />
+              <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>Select your availability date</small>
             </div>
 
             <div className="form-group">

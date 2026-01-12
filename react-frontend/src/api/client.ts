@@ -304,6 +304,19 @@ export const candidateAPI = {
   listCertifications: () =>
     apiClient.get<Certification[]>('/candidates/me/certifications'),
 
+  // Social Links
+  addSocialLink: (link: { platform: string; url: string; display_name?: string }) =>
+    apiClient.post('/candidates/me/social-links', link),
+
+  getSocialLinks: () =>
+    apiClient.get('/candidates/me/social-links'),
+
+  updateSocialLink: (linkId: number, link: { platform: string; url: string; display_name?: string }) =>
+    apiClient.put(`/candidates/me/social-links/${linkId}`, link),
+
+  deleteSocialLink: (linkId: number) =>
+    apiClient.delete(`/candidates/me/social-links/${linkId}`),
+
   // Resumes
   uploadResume: (file: File) => {
     const formData = new FormData();

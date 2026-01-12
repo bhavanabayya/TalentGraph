@@ -65,6 +65,18 @@ class Resume(SQLModel, table=True):
     candidate: "Candidate" = Relationship(back_populates="resumes")
 
 
+class SocialLink(SQLModel, table=True):
+    """Social media and portfolio links for candidates"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidate_id: int = Field(foreign_key="candidate.id")
+    platform: str  # "github", "linkedin", "portfolio", "twitter", "personal-website"
+    url: str
+    display_name: Optional[str] = None  # e.g., "GitHub Profile", "My Portfolio"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    candidate: "Candidate" = Relationship(back_populates="social_links")
+
+
 class CandidateJobPreference(SQLModel, table=True):
     """Job preference profile created by candidate for different roles/products"""
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -140,6 +152,7 @@ class Candidate(SQLModel, table=True):
     skills: List[Skill] = Relationship(back_populates="candidate")
     certifications: List[Certification] = Relationship(back_populates="candidate")
     resumes: List[Resume] = Relationship(back_populates="candidate")
+    social_links: List["SocialLink"] = Relationship(back_populates="candidate")
     job_preferences: List[CandidateJobPreference] = Relationship(back_populates="candidate")
     swipes_given: List["Swipe"] = Relationship(back_populates="candidate")
     applications: List["Application"] = Relationship(back_populates="candidate")

@@ -419,31 +419,46 @@ const JobPreferencesPage: React.FC = () => {
             {/* Role Selection */}
             {formData.product_id > 0 && (
               <div className="form-group">
-                <label>Roles (Select multiple) *</label>
-                <div className="roles-list">
+                <label>Primary Role *</label>
+                <select
+                  value={formData.roles.length > 0 ? formData.roles[0] : ''}
+                  onChange={(e) => {
+                    const selectedRole = e.target.value;
+                    // Auto-set preference name to role name
+                    setFormData({ 
+                      ...formData, 
+                      roles: selectedRole ? [selectedRole] : [],
+                      preference_name: selectedRole  // Set preference name same as role
+                    });
+                  }}
+                  required
+                >
+                  <option value="">Select Role</option>
                   {ontology.roles[product?.name || '']?.map((role) => (
-                    <label key={role.id} className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={formData.roles.includes(role.name)}
-                        onChange={() => handleRoleToggle(role.id)}
-                      />
+                    <option key={role.id} value={role.name}>
                       {role.name}
-                    </label>
+                    </option>
                   ))}
-                </div>
+                </select>
+                <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>Profile name will automatically be set to the selected role.</small>
               </div>
             )}
 
             {/* Preference Name */}
             <div className="form-group">
-              <label>Profile Name (optional)</label>
+              <label>Profile Name</label>
               <input
                 type="text"
-                placeholder="e.g., Senior Oracle Fusion Consultant"
-                value={formData.preference_name || ''}
+                placeholder="Auto-generated from selected role"
+                value={formData.preference_name || formData.roles[0] || ''}
+                disabled={!formData.roles.length}
+                style={{ 
+                  backgroundColor: !formData.roles.length ? '#f5f5f5' : 'white',
+                  cursor: !formData.roles.length ? 'not-allowed' : 'text'
+                }}
                 onChange={(e) => setFormData({ ...formData, preference_name: e.target.value })}
               />
+              <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>Auto-set to the selected role. Select a role first.</small>
             </div>
 
             {/* Experience */}
@@ -762,11 +777,25 @@ const JobPreferencesPage: React.FC = () => {
             <div className="form-group">
               <label>Availability</label>
               <input
-                type="text"
-                placeholder="e.g., Immediately, 2 weeks, Starting Jan 15, etc."
+                type="date"
                 value={formData.availability || ''}
-                onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
+                onChange={(e) => {
+                  const date = e.target.value;
+                  if (date) {
+                    const dateObj = new Date(date);
+                    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    });
+                    setFormData({ ...formData, availability: formattedDate });
+                  } else {
+                    setFormData({ ...formData, availability: '' });
+                  }
+                }}
+                style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
               />
+              <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>Select your availability date</small>
             </div>
 
             <div className="form-actions">

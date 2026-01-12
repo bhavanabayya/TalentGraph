@@ -98,6 +98,17 @@ class ResumeRead(BaseModel):
     created_at: str
 
 
+class SocialLinkCreate(BaseModel):
+    platform: str  # "github", "linkedin", "portfolio", "twitter", "personal-website"
+    url: str
+    display_name: Optional[str] = None
+
+
+class SocialLinkRead(SocialLinkCreate):
+    id: int
+    created_at: datetime
+
+
 class CandidateBase(BaseModel):
     name: str
     email: Optional[str] = None
@@ -135,6 +146,7 @@ class CandidateRead(CandidateBase):
     skills: List[SkillRead] = []
     certifications: List[CertificationRead] = []
     resumes: List[ResumeRead] = []
+    social_links: List[SocialLinkRead] = []
     
     @field_validator('job_roles', mode='before')
     @classmethod
