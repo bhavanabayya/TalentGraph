@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/authStore';
-import { jobsAPI } from '../api/client';
+import { jobsAPI, jobRolesAPI } from '../api/client';
 import '../styles/Dashboard.css';
 
 interface JobPosting {
@@ -25,7 +25,7 @@ interface JobPosting {
 
 const RecruiterJobPostingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, companyRole, email } = useAuth();
 
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -34,6 +34,15 @@ const RecruiterJobPostingPage: React.FC = () => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Ontology state
+  const [authors, setAuthors] = useState<string[]>([]);
+  const [products, setProducts] = useState<string[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
+
+  // Check if user can create/edit jobs (ADMIN or HR can, RECRUITER cannot)
+  const canManageJobs = companyRole === 'ADMIN' || companyRole === 'HR';
+  const isRecruiterOnly = companyRole === 'RECRUITER';
 
   const [formData, setFormData] = useState<JobPosting>({
     title: '',
@@ -54,7 +63,57 @@ const RecruiterJobPostingPage: React.FC = () => {
 
   useEffect(() => {
     fetchJobPostings();
+    loadAuthors();
   }, []);
+
+  useEffect(() => {
+    if (showForm && formData.product_author) {
+      handleLoadProducts(formData.product_author);
+      if (formData.product) {
+        handleLoadRoles(formData.product_author, formData.product);
+      }
+    }
+  }, [showForm]);
+
+  const loadAuthors = async () => {
+    try {
+      const res = await jobRolesAPI.getAuthors();
+      setAuthors(res.data.authors || []);
+    } catch (err) {
+      console.error('Failed to load authors:', err);
+    }
+  };
+
+  const handleLoadProducts = async (author?: string) => {
+    const authorToUse = author || formData.product_author;
+    if (!authorToUse) {
+      setProducts([]);
+      return;
+    }
+    try {
+      const res = await jobRolesAPI.getProducts(authorToUse);
+      setProducts(res.data.products || []);
+    } catch (err) {
+      console.error('Failed to load products:', err);
+      setProducts([]);
+    }
+  };
+
+  const handleLoadRoles = async (author?: string, product?: string) => {
+    const authorToUse = author || formData.product_author;
+    const productToUse = product || formData.product;
+    if (!authorToUse || !productToUse) {
+      setRoles([]);
+      return;
+    }
+    try {
+      const res = await jobRolesAPI.getRoles(authorToUse, productToUse);
+      setRoles(res.data.roles || []);
+    } catch (err) {
+      console.error('Failed to load roles:', err);
+      setRoles([]);
+    }
+  };
 
   const fetchJobPostings = async () => {
     try {
@@ -130,7 +189,12 @@ const RecruiterJobPostingPage: React.FC = () => {
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
-        <h1>Recruiter Portal - Job Postings</h1>
+        <div>
+          <h1>Job Postings Portal</h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#666' }}>
+            Signed in as: <strong>{email}</strong> ({companyRole})
+          </p>
+        </div>
         <button className="btn-logout" onClick={handleLogout}>Logout</button>
       </header>
 
@@ -139,20 +203,35 @@ const RecruiterJobPostingPage: React.FC = () => {
 
       <div className="dashboard-content">
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          {/* Create New Posting Button */}
+          {/* Create New Posting Button - Only for ADMIN/HR */}
           <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>My Job Postings</h2>
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                resetForm();
-                setEditingId(null);
-                setShowForm(!showForm);
-              }}
-              style={{ fontSize: '14px' }}
-            >
-              {showForm ? '✕ Close Form' : '+ Post New Job'}
-            </button>
+            <div>
+              <h2 style={{ margin: '0 0 4px 0' }}>
+                {isRecruiterOnly ? 'Available Job Postings' : 'My Job Postings'}
+              </h2>
+              {isRecruiterOnly && (
+                <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+                  View-only mode. You can see assigned and created jobs but cannot edit or delete them.
+                </p>
+              )}
+            </div>
+            {canManageJobs && (
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  resetForm();
+                  setEditingId(null);
+                  setShowForm(!showForm);
+                  if (!showForm) {
+                    // Load products for default author when form opens
+                    handleLoadProducts('Oracle');
+                  }
+                }}
+                style={{ fontSize: '14px' }}
+              >
+                {showForm ? '✕ Close Form' : '+ Post New Job'}
+              </button>
+            )}
           </div>
 
           {/* Job Posting Form */}
@@ -193,26 +272,56 @@ const RecruiterJobPostingPage: React.FC = () => {
                     />
                   </div>
 
+                  <div className="form-group">
+                    <label>Product Author *</label>
+                    <select
+                      value={formData.product_author}
+                      onChange={(e) => {
+                        const author = e.target.value;
+                        setFormData({ ...formData, product_author: author, product: '', role: '' });
+                        handleLoadProducts(author);
+                      }}
+                      required
+                    >
+                      <option value="">Select a product author</option>
+                      {authors.map((author) => (
+                        <option key={author} value={author}>{author}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="form-row">
                     <div className="form-group">
                       <label>Product *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Oracle Fusion"
+                      <select
                         value={formData.product}
-                        onChange={(e) => setFormData({ ...formData, product: e.target.value })}
+                        onChange={(e) => {
+                          const product = e.target.value;
+                          setFormData({ ...formData, product, role: '' });
+                          handleLoadRoles(formData.product_author, product);
+                        }}
                         required
-                      />
+                        disabled={!formData.product_author}
+                      >
+                        <option value="">Select a product</option>
+                        {products.map((product) => (
+                          <option key={product} value={product}>{product}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="form-group">
                       <label>Role *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Functional Consultant"
+                      <select
                         value={formData.role}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                         required
-                      />
+                        disabled={!formData.product}
+                      >
+                        <option value="">Select a role</option>
+                        {roles.map((role) => (
+                          <option key={role} value={role}>{role}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -398,55 +507,151 @@ const RecruiterJobPostingPage: React.FC = () => {
                   key={job.id}
                   style={{
                     backgroundColor: 'white',
-                    padding: '20px',
+                    padding: '24px',
                     borderRadius: '8px',
-                    marginBottom: '16px',
-                    border: '1px solid #e0e0e0'
+                    marginBottom: '20px',
+                    border: '1px solid #e0e0e0',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                    <div>
-                      <h4 style={{ margin: '0 0 4px 0' }}>{job.title}</h4>
+                  {/* Header with Title and Actions */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: '0 0 4px 0', fontSize: '20px', color: '#2c3e50' }}>{job.title}</h3>
                       <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '14px' }}>
-                        {job.product} - {job.role}
+                        <strong>{job.product_author}</strong> - {job.product} - {job.role}
                       </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        className="btn btn-small"
-                        onClick={() => {
-                          setFormData(job);
-                          setEditingId(job.id!);
-                          setShowForm(true);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-small"
-                        style={{ backgroundColor: '#dc3545', color: 'white' }}
-                        onClick={async () => {
-                          if (window.confirm('Are you sure you want to delete this job posting?')) {
-                            try {
-                              setSaving(true);
-                              await jobsAPI.deleteJobPosting(job.id!);
-                              setSuccessMessage('Job posting deleted');
-                              setTimeout(() => setSuccessMessage(''), 3000);
-                              await fetchJobPostings();
-                            } catch (err: any) {
-                              setError(err.response?.data?.detail || 'Failed to delete job posting');
-                            } finally {
-                              setSaving(false);
-                            }
-                          }
-                        }}
-                        disabled={saving}
-                      >
-                        Delete
-                      </button>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {canManageJobs ? (
+                        <>
+                          <button
+                            className="btn btn-small"
+                            onClick={() => {
+                              setFormData(job);
+                              setEditingId(job.id!);
+                              setShowForm(true);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn btn-small"
+                            style={{ backgroundColor: '#dc3545', color: 'white' }}
+                            onClick={async () => {
+                              if (window.confirm('Are you sure you want to delete this job posting?')) {
+                                try {
+                                  setSaving(true);
+                                  await jobsAPI.deleteJobPosting(job.id!);
+                                  setSuccessMessage('Job posting deleted');
+                                  setTimeout(() => setSuccessMessage(''), 3000);
+                                  await fetchJobPostings();
+                                } catch (err: any) {
+                                  setError(err.response?.data?.detail || 'Failed to delete job posting');
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }
+                            }}
+                            disabled={saving}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '12px', color: '#999', fontStyle: 'italic', padding: '4px 8px' }}>
+                          View Only (Read-Only Access)
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#555' }}>{job.description}</p>
+
+                  {/* Details Grid */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                    gap: '16px',
+                    marginBottom: '16px',
+                    paddingBottom: '16px',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}>
+                    {/* Job Type */}
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Job Type</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                        {job.job_type || 'Not specified'}
+                      </p>
+                    </div>
+
+                    {/* Duration (for contracts) */}
+                    {job.job_type === 'Contract' && job.duration && (
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Duration</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                          {job.duration}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Start Date */}
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Start Date</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                        {job.start_date ? new Date(job.start_date).toLocaleDateString() : 'Flexible'}
+                      </p>
+                    </div>
+
+                    {/* Seniority Level */}
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Seniority</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                        {job.seniority || 'Not specified'}
+                      </p>
+                    </div>
+
+                    {/* Work Type */}
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Work Type</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                        {job.work_type || 'Not specified'}
+                      </p>
+                    </div>
+
+                    {/* Location */}
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Location</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                        {job.location || 'Not specified'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Compensation */}
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '20px',
+                    marginBottom: '16px',
+                    paddingBottom: '16px',
+                    borderBottom: '1px solid #f0f0f0',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Currency</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                        {job.currency || 'USD'}
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Hourly Rate</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>
+                        {job.min_rate && job.max_rate 
+                          ? `${job.currency || 'USD'} ${job.min_rate} - ${job.max_rate}/hr`
+                          : job.min_rate
+                          ? `${job.currency || 'USD'} ${job.min_rate}+/hr`
+                          : 'Not specified'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

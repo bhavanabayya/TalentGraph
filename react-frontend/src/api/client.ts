@@ -434,7 +434,15 @@ export const jobsAPI = {
   getCompanyAllPostings: () =>
     apiClient.get<JobPost[]>('/jobs/company/all-postings'),
 
-  // Recruiter-specific endpoints for managing job postings
+  // Recruiter's own job postings (created by current user)
+  getRecruiterAccessiblePostings: () =>
+    apiClient.get<JobPost[]>('/jobs/recruiter/my-accessible-postings'),
+
+  // Jobs assigned to current recruiter
+  getJobsAssignedToMe: () =>
+    apiClient.get<JobPost[]>('/jobs/assigned-to-me'),
+
+  // All company job postings for recruiter view
   getRecruiterPostings: () =>
     apiClient.get<JobPost[]>('/jobs/recruiter/my-postings'),
 
@@ -446,6 +454,13 @@ export const jobsAPI = {
 
   deleteJobPosting: (jobId: number) =>
     apiClient.delete(`/jobs/recruiter/${jobId}`),
+
+  // Team management endpoints
+  assignJobToRecruiter: (jobId: number, assignedToUserId: number) =>
+    apiClient.put<JobPost>(`/jobs/${jobId}/assign`, { assigned_to_user_id: assignedToUserId }),
+
+  getTeamWorkload: () =>
+    apiClient.get<any[]>('/jobs/team/workload'),
 };
 
 // ============================================================================

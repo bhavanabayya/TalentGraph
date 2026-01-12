@@ -25,7 +25,7 @@ const softSkills = [
 
 const CandidateDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, email } = useAuth();
   
   // Profile state
   const [profile, setProfile] = useState<any>(null);
@@ -489,7 +489,12 @@ const CandidateDashboard: React.FC = () => {
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
-        <h1>Candidate Dashboard</h1>
+        <div>
+          <h1>Candidate Dashboard</h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#666' }}>
+            Signed in as: <strong>{email}</strong>
+          </p>
+        </div>
         <button className="btn-logout" onClick={handleLogout}>Logout</button>
       </header>
 
@@ -1256,60 +1261,167 @@ const CandidateDashboard: React.FC = () => {
               Browse and apply to job postings from recruiters on the platform. Click "Apply" to submit your application.
             </p>
             {availableJobs && availableJobs.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {availableJobs.map((job: any) => (
                   <div key={job.id} style={{
                     border: '1px solid #e0e0e0',
                     borderRadius: '8px',
-                    padding: '20px',
+                    padding: '24px',
                     backgroundColor: '#fff',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    transition: 'all 0.3s ease'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                   }}>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#2c3e50' }}>
-                      {job.title || job.job_title || 'Job Title'}
-                    </h3>
-                    <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '14px' }}>
-                      <strong>Company:</strong> {job.company_name || 'Company Name'}
-                    </p>
-                    
-                    {job.description && (
-                      <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '13px', lineHeight: '1.5' }}>
-                        {job.description.substring(0, 150)}...
+                    {/* Header Section */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#2c3e50' }}>
+                        {job.title || job.job_title || 'Job Title'}
+                      </h3>
+                      <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '14px' }}>
+                        <strong>Product:</strong> {job.product_author && job.product 
+                          ? `${job.product_author} - ${job.product}` 
+                          : 'Not specified'
+                        } {job.role && <span><strong> | Role:</strong> {job.role}</span>}
                       </p>
-                    )}
+                      {job.company_name && (
+                        <p style={{ margin: '0 0 12px 0', color: '#999', fontSize: '13px' }}>
+                          <strong>Company:</strong> {job.company_name}
+                        </p>
+                      )}
+                    </div>
 
-                    <div style={{ marginBottom: '12px' }}>
-                      <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '12px' }}>
-                        <strong>Required Skills:</strong>
-                      </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {job.required_skills && job.required_skills.length > 0 ? (
-                          job.required_skills.slice(0, 3).map((skill: string, idx: number) => (
-                            <span key={idx} style={{
-                              backgroundColor: '#e3f2fd',
-                              color: '#1976d2',
-                              padding: '4px 8px',
-                              borderRadius: '12px',
-                              fontSize: '12px'
-                            }}>
-                              {skill}
-                            </span>
-                          ))
-                        ) : (
-                          <span style={{ color: '#999' }}>Not specified</span>
-                        )}
+                    {/* Details Grid */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                      gap: '16px',
+                      marginBottom: '16px',
+                      paddingBottom: '16px',
+                      borderBottom: '1px solid #f0f0f0'
+                    }}>
+                      {/* Job Type */}
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Job Type</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                          {job.job_type || 'Not specified'}
+                        </p>
+                      </div>
+
+                      {/* Duration (for contracts) */}
+                      {job.job_type === 'Contract' && job.duration && (
+                        <div>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Duration</p>
+                          <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                            {job.duration}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Start Date */}
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Start Date</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                          {job.start_date ? new Date(job.start_date).toLocaleDateString() : 'Flexible'}
+                        </p>
+                      </div>
+
+                      {/* Seniority Level */}
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Seniority</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                          {job.seniority || 'Not specified'}
+                        </p>
+                      </div>
+
+                      {/* Work Type */}
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Work Type</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                          {job.work_type || 'Not specified'}
+                        </p>
+                      </div>
+
+                      {/* Location */}
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Location</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                          {job.location || 'Not specified'}
+                        </p>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
+                    {/* Compensation */}
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '20px',
+                      marginBottom: '16px',
+                      paddingBottom: '16px',
+                      borderBottom: '1px solid #f0f0f0',
+                      alignItems: 'center',
+                      flexWrap: 'wrap'
+                    }}>
                       <div>
-                        {job.salary_min && job.salary_max && (
-                          <p style={{ margin: 0, fontSize: '13px', color: '#4CAF50', fontWeight: 'bold' }}>
-                            ${job.salary_min}k - ${job.salary_max}k/yr
-                          </p>
-                        )}
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Currency</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                          {job.currency || 'USD'}
+                        </p>
                       </div>
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Hourly Rate</p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>
+                          {job.min_rate && job.max_rate 
+                            ? `${job.currency || 'USD'} ${job.min_rate} - ${job.max_rate}/hr`
+                            : job.min_rate
+                            ? `${job.currency || 'USD'} ${job.min_rate}+/hr`
+                            : job.salary_min && job.salary_max
+                            ? `$${job.salary_min}k - $${job.salary_max}k/yr`
+                            : 'Not specified'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    {job.description && (
+                      <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #f0f0f0' }}>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Description</p>
+                        <p style={{ margin: 0, color: '#666', fontSize: '14px', lineHeight: '1.6' }}>
+                          {job.description.substring(0, 300)}
+                          {job.description.length > 300 ? '...' : ''}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Skills & Apply Button */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                      {job.required_skills && job.required_skills.length > 0 && (
+                        <div>
+                          <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>
+                            Required Skills:
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {job.required_skills.slice(0, 3).map((skill: string, idx: number) => (
+                              <span key={idx} style={{
+                                backgroundColor: '#e3f2fd',
+                                color: '#1976d2',
+                                padding: '4px 8px',
+                                borderRadius: '12px',
+                                fontSize: '12px'
+                              }}>
+                                {skill}
+                              </span>
+                            ))}
+                            {job.required_skills.length > 3 && (
+                              <span style={{
+                                backgroundColor: '#f5f5f5',
+                                color: '#666',
+                                padding: '4px 8px',
+                                borderRadius: '12px',
+                                fontSize: '12px'
+                              }}>
+                                +{job.required_skills.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       <button 
                         onClick={() => handleApplyJob(job.id)}
                         disabled={saving}
@@ -1317,12 +1429,13 @@ const CandidateDashboard: React.FC = () => {
                           backgroundColor: '#2196F3',
                           color: 'white',
                           border: 'none',
-                          padding: '8px 16px',
-                          borderRadius: '4px',
+                          padding: '10px 20px',
+                          borderRadius: '6px',
                           cursor: saving ? 'not-allowed' : 'pointer',
-                          fontSize: '13px',
+                          fontSize: '14px',
                           fontWeight: 'bold',
-                          opacity: saving ? 0.7 : 1
+                          opacity: saving ? 0.7 : 1,
+                          transition: 'all 0.2s ease'
                         }}
                       >
                         {saving ? 'Applying...' : 'Apply'}

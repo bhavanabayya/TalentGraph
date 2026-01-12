@@ -11,7 +11,7 @@ import '../styles/Dashboard.css';
 
 const CompanyDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { logout, companyRole } = useAuth();
+  const { logout, companyRole, email } = useAuth();
 
   const [jobs, setJobs] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
@@ -49,10 +49,14 @@ const CompanyDashboard: React.FC = () => {
   // Shortlist & Rankings
   const [shortlist, setShortlist] = useState<any[]>([]);
   const [rankings, setRankings] = useState<any[]>([]);
+  const [teamWorkload, setTeamWorkload] = useState<any[]>([]);
 
   useEffect(() => {
     loadJobs();
     loadOntology();
+    if (companyRole === 'ADMIN' || companyRole === 'HR') {
+      loadTeamWorkload();
+    }
   }, []);
 
   const loadOntology = async () => {
@@ -115,9 +119,9 @@ const CompanyDashboard: React.FC = () => {
         console.log('[COMPANY-DASHBOARD] User is ADMIN/HR - fetching all company postings');
         response = await jobsAPI.getCompanyAllPostings();
       } else {
-        // Recruiters see only their own jobs
-        console.log('[COMPANY-DASHBOARD] User is RECRUITER - fetching their postings');
-        response = await jobsAPI.getRecruiterPostings();
+        // Recruiters see only their own jobs (created by them)
+        console.log('[COMPANY-DASHBOARD] User is RECRUITER - fetching their accessible postings');
+        response = await jobsAPI.getRecruiterAccessiblePostings();
       }
       
       console.log(`[COMPANY-DASHBOARD] Jobs loaded successfully: ${response.data?.length || 0} jobs found`);
@@ -262,6 +266,31 @@ const CompanyDashboard: React.FC = () => {
     }
   };
 
+  const loadTeamWorkload = async () => {
+    console.log('[COMPANY-DASHBOARD] Loading team workload');
+    try {
+      const response = await jobsAPI.getTeamWorkload();
+      console.log('[COMPANY-DASHBOARD] Team workload loaded:', response.data);
+      setTeamWorkload(response.data || []);
+    } catch (err) {
+      console.error('[COMPANY-DASHBOARD] Failed to load team workload:', err);
+    }
+  };
+
+  const handleAssignJob = async (jobId: number, assignedToUserId: number) => {
+    console.log(`[COMPANY-DASHBOARD] Assigning job ${jobId} to recruiter ${assignedToUserId}`);
+    try {
+      await jobsAPI.assignJobToRecruiter(jobId, assignedToUserId);
+      console.log('[COMPANY-DASHBOARD] Job assigned successfully');
+      alert('Job assigned successfully!');
+      await loadTeamWorkload();
+      await loadJobs();
+    } catch (err) {
+      console.error('[COMPANY-DASHBOARD] Failed to assign job:', err);
+      alert('Failed to assign job');
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -274,7 +303,12 @@ const CompanyDashboard: React.FC = () => {
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
-        <h1>Recruiter Dashboard</h1>
+        <div>
+          <h1>Recruiter Dashboard</h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#666' }}>
+            Signed in as: <strong>{email}</strong> ({companyRole})
+          </p>
+        </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button className="btn btn-primary" onClick={() => navigate('/recruiter-job-posting')} style={{ fontSize: '14px' }}>
             📝 Job Posting Portal
@@ -287,6 +321,9 @@ const CompanyDashboard: React.FC = () => {
         <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => { setActiveTab('feed'); selectedJobId && loadCandidateFeed(selectedJobId); }}>Candidate Feed</button>
         <button className={`tab ${activeTab === 'shortlist' ? 'active' : ''}`} onClick={() => { setActiveTab('shortlist'); selectedJobId && loadShortlist(selectedJobId); }}>Shortlist</button>
         <button className={`tab ${activeTab === 'rankings' ? 'active' : ''}`} onClick={() => { setActiveTab('rankings'); selectedJobId && loadRankings(selectedJobId); }}>Rankings</button>
+        {(companyRole === 'ADMIN' || companyRole === 'HR') && (
+          <button className={`tab ${activeTab === 'team' ? 'active' : ''}`} onClick={() => { setActiveTab('team'); loadTeamWorkload(); }}>👥 Team Management</button>
+        )}
       </nav>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -403,9 +440,139 @@ const CompanyDashboard: React.FC = () => {
             {!selectedJobId && <p>Please select a job first</p>}
           </div>
         )}
+
+        {/* Team Management Tab */}
+        {activeTab === 'team' && (
+          <div className="team-section">
+            <h2>👥 Team Management & Workload</h2>
+            {teamWorkload.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '16px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #ddd', backgroundColor: '#f5f7ff' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Team Member</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600 }}>Role</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600 }}>Jobs Created</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600 }}>Jobs Assigned</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: 600 }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamWorkload.map((member: any) => (
+                      <tr key={member.recruiter_id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '12px' }}>
+                          <strong>{member.recruiter_name}</strong>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            backgroundColor: member.role === 'ADMIN' ? '#667eea' : member.role === 'HR' ? '#764ba2' : '#4a9eff',
+                            color: 'white',
+                            fontSize: '12px',
+                            fontWeight: 500
+                          }}>
+                            {member.role}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            width: '32px',
+                            height: '32px',
+                            lineHeight: '32px',
+                            borderRadius: '50%',
+                            backgroundColor: '#f0f3ff',
+                            color: '#667eea',
+                            fontWeight: 600
+                          }}>
+                            {member.jobs_created}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            width: '32px',
+                            height: '32px',
+                            lineHeight: '32px',
+                            borderRadius: '50%',
+                            backgroundColor: '#fff3f0',
+                            color: '#d32f2f',
+                            fontWeight: 600
+                          }}>
+                            {member.jobs_assigned}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <strong style={{ fontSize: '16px' }}>{member.total_jobs}</strong>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p>No team members or workload data available</p>
+            )}
+
+            <h3 style={{ marginTop: '32px' }}>Assign Job to Team Member</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+              <div>
+                <label>Select Job</label>
+                <select
+                  value={selectedJobId || ''}
+                  onChange={(e) => setSelectedJobId(parseInt(e.target.value))}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="">Select a job...</option>
+                  {jobs.map((job: any) => (
+                    <option key={job.id} value={job.id}>
+                      {job.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Assign to Recruiter</label>
+                <select
+                  onChange={(e) => {
+                    const assignedToUserId = parseInt(e.target.value);
+                    if (selectedJobId && assignedToUserId) {
+                      handleAssignJob(selectedJobId, assignedToUserId);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="">Choose recruiter...</option>
+                  {teamWorkload.map((member: any) => (
+                    <option key={member.recruiter_id} value={member.recruiter_id}>
+                      {member.recruiter_name} ({member.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
 
 export default CompanyDashboard;

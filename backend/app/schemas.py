@@ -286,6 +286,7 @@ class JobPostCreate(BaseModel):
     
     # Company hierarchy
     created_by_user_id: Optional[int] = None  # Will be auto-populated from token
+    assigned_to_user_id: Optional[int] = None  # Recruiter assigned to manage this job
 
 
 class JobPostUpdate(BaseModel):
@@ -300,6 +301,7 @@ class JobPostUpdate(BaseModel):
     min_rate: Optional[float] = None
     max_rate: Optional[float] = None
     status: Optional[str] = None
+    assigned_to_user_id: Optional[int] = None
 
 
 class JobPostRead(JobPostCreate):
