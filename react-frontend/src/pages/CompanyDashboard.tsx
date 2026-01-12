@@ -318,6 +318,7 @@ const CompanyDashboard: React.FC = () => {
       </header>
 
       <nav className="dashboard-tabs">
+        <button className={`tab ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>📋 Job Management</button>
         <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => { setActiveTab('feed'); selectedJobId && loadCandidateFeed(selectedJobId); }}>Candidate Feed</button>
         <button className={`tab ${activeTab === 'shortlist' ? 'active' : ''}`} onClick={() => { setActiveTab('shortlist'); selectedJobId && loadShortlist(selectedJobId); }}>Shortlist</button>
         <button className={`tab ${activeTab === 'rankings' ? 'active' : ''}`} onClick={() => { setActiveTab('rankings'); selectedJobId && loadRankings(selectedJobId); }}>Rankings</button>
@@ -329,6 +330,89 @@ const CompanyDashboard: React.FC = () => {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="dashboard-content">
+        {/* Job Management Tab */}
+        {activeTab === 'jobs' && (
+          <div className="jobs-management-section">
+            <h2>📋 All Job Postings</h2>
+            {jobs.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>No job postings yet</p>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                gap: '20px',
+                marginTop: '20px'
+              }}>
+                {jobs.map((job: any) => (
+                  <div key={job.id} style={{
+                    backgroundColor: 'white',
+                    padding: '20px',
+                    borderRadius: '8px',
+                    border: '1px solid #e0e0e0',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                  }}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>{job.title}</h3>
+                      <p style={{ margin: '0 0 4px 0', color: '#666', fontSize: '14px' }}>
+                        <strong>{job.product_author}</strong> - {job.product} - {job.role}
+                      </p>
+                      <p style={{ margin: '0', color: '#999', fontSize: '12px' }}>
+                        {job.location} • {job.work_type}
+                      </p>
+                    </div>
+                    
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '12px',
+                      marginBottom: '16px',
+                      paddingBottom: '16px',
+                      borderBottom: '1px solid #f0f0f0'
+                    }}>
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999' }}>Rate</p>
+                        <p style={{ margin: 0, fontWeight: 600 }}>${job.min_rate} - ${job.max_rate}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999' }}>Duration</p>
+                        <p style={{ margin: 0, fontWeight: 600 }}>{job.duration || 'Not specified'}</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        className="btn btn-small"
+                        onClick={() => navigate('/recruiter-job-posting', { state: { editJobId: job.id } })}
+                        style={{ flex: 1, fontSize: '14px' }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        className="btn btn-small"
+                        style={{ flex: 1, fontSize: '14px', backgroundColor: '#dc3545', color: 'white' }}
+                        onClick={async () => {
+                          if (window.confirm('Are you sure you want to delete this job posting?')) {
+                            try {
+                              await jobsAPI.deleteJobPosting(job.id);
+                              setError('');
+                              loadJobs();
+                              alert('Job deleted successfully');
+                            } catch (err: any) {
+                              setError(err.response?.data?.detail || 'Failed to delete job');
+                            }
+                          }
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Candidate Feed Tab */}
         {activeTab === 'feed' && (
           <div className="feed-section">

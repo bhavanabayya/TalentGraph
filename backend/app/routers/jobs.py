@@ -200,14 +200,18 @@ def get_company_all_postings(
     """
     company_id = current_user.get("company_id")
     user_id = current_user.get("user_id")
+    user_email = current_user.get("email")
     
-    logger.info(f"[COMPANY_ALL_POSTINGS] User {user_id} requesting all company jobs for company {company_id}")
+    logger.info(f"[COMPANY_ALL_POSTINGS] User {user_id} ({user_email}) requesting all company jobs for company {company_id}")
     
-    jobs = session.exec(
+    # Debug: Get all jobs in the database for this company
+    all_jobs = session.exec(
         select(JobPost).where(JobPost.company_id == company_id).order_by(JobPost.created_at.desc())
     ).all()
     
-    logger.info(f"[COMPANY_ALL_POSTINGS] Found {len(jobs)} total jobs for company {company_id}")
+    logger.info(f"[COMPANY_ALL_POSTINGS] Found {len(all_jobs)} total jobs for company_id={company_id}")
+    for job in all_jobs:
+        logger.info(f"[COMPANY_ALL_POSTINGS]   - Job ID {job.id}: '{job.title}' (created_by_user_id={job.created_by_user_id}, company_id={job.company_id})")
     
     return [
         JobPostRead(
@@ -234,7 +238,7 @@ def get_company_all_postings(
             updated_at=job.updated_at.isoformat(),
             created_by_user_id=job.created_by_user_id
         )
-        for job in jobs
+        for job in all_jobs
     ]
 
 
