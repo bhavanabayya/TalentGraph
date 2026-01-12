@@ -99,6 +99,16 @@ def signup(req: SignUpRequest, session: Session = Depends(get_session)):
         logger.info(f"[SIGNUP] Candidate profile created for {user.id}")
     elif req.user_type == "company":
         logger.info(f"[SIGNUP] Creating company account and CompanyUser for {user.id}")
+        
+        # Validate company_role
+        valid_roles = ["ADMIN", "HR", "RECRUITER"]
+        if not req.company_role or req.company_role not in valid_roles:
+            logger.warning(f"[SIGNUP] Invalid company_role: {req.company_role}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"For company users, company_role must be one of: {', '.join(valid_roles)}"
+            )
+        
         # Create CompanyAccount and CompanyUser for company
         company = CompanyAccount(
             company_name=email_lower.split("@")[1].capitalize(),  # Default company name from domain
@@ -108,15 +118,15 @@ def signup(req: SignUpRequest, session: Session = Depends(get_session)):
         session.flush()  # Get the company ID
         logger.info(f"[SIGNUP] Company created with ID: {company.id}")
         
-        # Create CompanyUser linking User to Company
+        # Create CompanyUser linking User to Company with selected role
         company_user = CompanyUser(
             user_id=user.id,
             company_id=company.id,
             first_name=email_lower.split("@")[0],
             last_name="",
-            role="ADMIN"  # First user is admin
+            role=req.company_role  # Use the role selected during signup
         )
-        logger.info(f"[SIGNUP] CompanyUser created linking user {user.id} to company {company.id}")
+        logger.info(f"[SIGNUP] CompanyUser created linking user {user.id} to company {company.id} with role: {req.company_role}")
         session.add(company_user)
     
     session.commit()

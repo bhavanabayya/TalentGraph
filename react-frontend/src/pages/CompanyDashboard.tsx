@@ -11,7 +11,7 @@ import '../styles/Dashboard.css';
 
 const CompanyDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, companyRole } = useAuth();
 
   const [jobs, setJobs] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
@@ -106,9 +106,20 @@ const CompanyDashboard: React.FC = () => {
   };
 
   const loadJobs = async () => {
-    console.log('[COMPANY-DASHBOARD] Loading jobs for company');
+    console.log(`[COMPANY-DASHBOARD] Loading jobs for company (role: ${companyRole})`);
     try {
-      const response = await jobsAPI.list();
+      let response;
+      
+      // Admin/HR can see all company jobs
+      if (companyRole === 'ADMIN' || companyRole === 'HR') {
+        console.log('[COMPANY-DASHBOARD] User is ADMIN/HR - fetching all company postings');
+        response = await jobsAPI.getCompanyAllPostings();
+      } else {
+        // Recruiters see only their own jobs
+        console.log('[COMPANY-DASHBOARD] User is RECRUITER - fetching their postings');
+        response = await jobsAPI.getRecruiterPostings();
+      }
+      
       console.log(`[COMPANY-DASHBOARD] Jobs loaded successfully: ${response.data?.length || 0} jobs found`);
       setJobs(response.data || []);
       if (response.data?.length > 0) {

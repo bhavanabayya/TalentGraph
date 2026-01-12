@@ -197,6 +197,7 @@ class JobPost(SQLModel, table=True):
     """Job posting by a company"""
     id: Optional[int] = Field(default=None, primary_key=True)
     company_id: int = Field(foreign_key="companyaccount.id")
+    created_by_user_id: Optional[int] = Field(foreign_key="companyuser.id")  # Recruiter who created this job
     
     title: str
     description: Optional[str] = None

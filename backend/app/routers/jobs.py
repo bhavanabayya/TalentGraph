@@ -188,6 +188,55 @@ def list_company_jobs(
     ]
 
 
+@router.get("/company/all-postings", response_model=list[JobPostRead])
+def get_company_all_postings(
+    current_user: dict = Depends(require_company_role(["ADMIN", "HR"])),
+    session: Session = Depends(get_session)
+):
+    """
+    Get ALL job postings for the company (Admin/HR only).
+    Shows all jobs created by anyone in the company, grouped by creator.
+    """
+    company_id = current_user.get("company_id")
+    user_id = current_user.get("user_id")
+    
+    logger.info(f"[COMPANY_ALL_POSTINGS] User {user_id} requesting all company jobs for company {company_id}")
+    
+    jobs = session.exec(
+        select(JobPost).where(JobPost.company_id == company_id).order_by(JobPost.created_at.desc())
+    ).all()
+    
+    logger.info(f"[COMPANY_ALL_POSTINGS] Found {len(jobs)} total jobs for company {company_id}")
+    
+    return [
+        JobPostRead(
+            id=job.id,
+            company_id=job.company_id,
+            title=job.title,
+            description=job.description,
+            product_author=job.product_author,
+            product=job.product,
+            role=job.role,
+            seniority=job.seniority,
+            job_type=job.job_type,
+            duration=job.duration,
+            start_date=job.start_date.isoformat() if job.start_date else None,
+            currency=job.currency,
+            location=job.location,
+            work_type=job.work_type,
+            min_rate=job.min_rate,
+            max_rate=job.max_rate,
+            required_skills=json.loads(job.required_skills or "[]"),
+            nice_to_have_skills=json.loads(job.nice_to_have_skills or "[]"),
+            status=job.status,
+            created_at=job.created_at.isoformat(),
+            updated_at=job.updated_at.isoformat(),
+            created_by_user_id=job.created_by_user_id
+        )
+        for job in jobs
+    ]
+
+
 @router.get("/{job_id}", response_model=JobPostRead)
 def get_job(
     job_id: int,
@@ -371,6 +420,23 @@ def recruiter_create_job(
     user_id = current_user.get("user_id")
     logger.info(f"[RECRUITER_CREATE] Creating job by user {user_id} for company {company_id}")
     
+    # Get the CompanyUser record to capture created_by_user_id
+    company_user = session.exec(
+        select(CompanyUser).where(
+            CompanyUser.user_id == user_id,
+            CompanyUser.company_id == company_id
+        )
+    ).first()
+    
+    if not company_user:
+        logger.error(f"[RECRUITER_CREATE] CompanyUser not found for user {user_id} in company {company_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not found in company"
+        )
+    
+    logger.info(f"[RECRUITER_CREATE] CompanyUser found: id={company_user.id}, role={company_user.role}")
+    
     required_skills_json = json.dumps(req.required_skills or [])
     nice_to_have_json = json.dumps(req.nice_to_have_skills or [])
     
@@ -385,6 +451,7 @@ def recruiter_create_job(
     
     job = JobPost(
         company_id=company_id,
+        created_by_user_id=company_user.id,  # Track who created the job
         title=req.title,
         description=req.description,
         product_author=req.product_author,
@@ -406,7 +473,7 @@ def recruiter_create_job(
     session.add(job)
     session.commit()
     session.refresh(job)
-    logger.info(f"[RECRUITER_CREATE] Job created with ID: {job.id}")
+    logger.info(f"[RECRUITER_CREATE] Job created with ID: {job.id}, created_by_user_id: {company_user.id}")
     
     return JobPostRead(
         id=job.id,

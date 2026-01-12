@@ -16,6 +16,7 @@ class SignUpRequest(BaseModel):
     email: EmailStr
     password: str  # Must be at least 8 chars, 1 uppercase, 1 number, 1 special char
     user_type: str  # "candidate" or "company"
+    company_role: Optional[str] = None  # "ADMIN", "HR", or "RECRUITER" (only for company users)
     
     @field_validator('password')
     @classmethod
@@ -282,6 +283,9 @@ class JobPostCreate(BaseModel):
     max_rate: Optional[float] = None
     required_skills: Optional[List[str]] = None
     nice_to_have_skills: Optional[List[str]] = None
+    
+    # Company hierarchy
+    created_by_user_id: Optional[int] = None  # Will be auto-populated from token
 
 
 class JobPostUpdate(BaseModel):

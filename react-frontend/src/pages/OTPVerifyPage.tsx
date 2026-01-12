@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../api/client.ts';
 import { useAuth } from '../context/authStore.ts';
+import { getCompanyRoleFromToken } from '../utils/tokenUtils.ts';
 import '../styles/Auth.css';
 
 const OTPVerifyPage: React.FC = () => {
@@ -57,7 +58,12 @@ const OTPVerifyPage: React.FC = () => {
       const response = await authAPI.verifyOTP({ email, code });
       const { access_token, user_id, user_type } = response.data;
 
-      login(access_token, user_id, user_type, email);
+      // Extract company role from token if it's a company user
+      const companyRole = user_type === 'company' 
+        ? getCompanyRoleFromToken(access_token) 
+        : null;
+
+      login(access_token, user_id, user_type, email, companyRole || undefined);
       localStorage.removeItem('pending_email');
 
       // Redirect based on user type

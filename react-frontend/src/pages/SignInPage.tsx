@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI, candidateAPI } from '../api/client.ts';
 import { useAuth } from '../context/authStore.ts';
+import { getCompanyRoleFromToken } from '../utils/tokenUtils.ts';
 import '../styles/Auth.css';
 
 const SignInPage: React.FC = () => {
@@ -25,12 +26,18 @@ const SignInPage: React.FC = () => {
       const response = await authAPI.login({ email, password });
       
       if (response.data.needs_otp === false && response.data.access_token) {
+        // Extract company role from token if it's a company user
+        const companyRole = response.data.user_type === 'company' 
+          ? getCompanyRoleFromToken(response.data.access_token) 
+          : null;
+        
         // Direct login without OTP - save token and redirect
         login(
           response.data.access_token,
           response.data.user_id,
           response.data.user_type,
-          email
+          email,
+          companyRole || undefined
         );
         
         // Redirect based on user type

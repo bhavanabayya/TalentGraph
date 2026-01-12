@@ -10,6 +10,7 @@ export interface SignUpRequest {
   email: string;
   password: string;
   user_type: 'candidate' | 'company';
+  company_role?: 'ADMIN' | 'HR' | 'RECRUITER';
 }
 
 export interface LoginRequest {
@@ -428,6 +429,10 @@ export const jobsAPI = {
 
   delete: (jobId: number) =>
     apiClient.delete(`/jobs/${jobId}`),
+
+  // Company-wide job listing (Admin/HR only)
+  getCompanyAllPostings: () =>
+    apiClient.get<JobPost[]>('/jobs/company/all-postings'),
 
   // Recruiter-specific endpoints for managing job postings
   getRecruiterPostings: () =>
