@@ -107,9 +107,17 @@ class Candidate(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", unique=True)
     
+    # General Information
     name: str
-    location: Optional[str] = None
+    email: Optional[str] = None  # Contact email
+    phone: Optional[str] = None  # Contact phone number
+    residential_address: Optional[str] = None  # Full residential address
+    location: Optional[str] = None  # City/Location preference
     profile_picture_path: Optional[str] = None
+    
+    # General Info Completion Flag
+    is_general_info_complete: bool = False  # Tracks if user has completed initial general info setup
+    
     summary: Optional[str] = None
     
     # Product/Role Focus

@@ -11,6 +11,8 @@ import WelcomePage from './pages/WelcomePage.tsx';
 import SignUpPage from './pages/SignUpPage.tsx';
 import SignInPage from './pages/SignInPage.tsx';
 import OTPVerifyPage from './pages/OTPVerifyPage.tsx';
+import GeneralInfoPage from './pages/GeneralInfoPage.tsx';
+import EditGeneralInfoPage from './pages/EditGeneralInfoPage.tsx';
 import CandidateDashboard from './pages/CandidateDashboard.tsx';
 import EditProfilePage from './pages/EditProfilePage.tsx';
 import CompanyDashboard from './pages/CompanyDashboard.tsx';
@@ -70,6 +72,26 @@ const App: React.FC = () => {
         <Route path="/otp-verify" element={<OTPVerifyPage />} />
 
         {/* Protected candidate routes */}
+        <Route
+          path="/general-info"
+          element={
+            <ProtectedRoute
+              element={<GeneralInfoPage />}
+              requiredUserType="candidate"
+            />
+          }
+        />
+
+        <Route
+          path="/edit-general-info"
+          element={
+            <ProtectedRoute
+              element={<EditGeneralInfoPage />}
+              requiredUserType="candidate"
+            />
+          }
+        />
+
         <Route
           path="/candidate-dashboard"
           element={

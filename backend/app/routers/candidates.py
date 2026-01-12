@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
@@ -24,6 +25,7 @@ from ..security import get_current_user, get_current_user_email, require_candida
 from ..matching import calculate_match_score
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 UPLOAD_DIR = BASE_DIR / "uploads"
@@ -40,33 +42,42 @@ def get_my_profile(
     session: Session = Depends(get_session)
 ):
     """Get authenticated candidate's profile."""
-    user_id = current_user.get("user_id")
-    
-    candidate = session.exec(
-        select(Candidate).where(Candidate.user_id == user_id)
-    ).first()
-    
-    if not candidate:
-        # Create a default candidate profile if it doesn't exist
-        user = session.exec(
-            select(User).where(User.id == user_id)
+    try:
+        user_id = current_user.get("user_id")
+        logger.info(f"[CANDIDATES] GET /me called for user_id: {user_id}")
+        
+        candidate = session.exec(
+            select(Candidate).where(Candidate.user_id == user_id)
         ).first()
         
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+        if not candidate:
+            logger.info(f"[CANDIDATES] No candidate found for user_id {user_id}, creating one")
+            # Create a default candidate profile if it doesn't exist
+            user = session.exec(
+                select(User).where(User.id == user_id)
+            ).first()
+            
+            if not user:
+                logger.error(f"[CANDIDATES] User not found for user_id: {user_id}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            
+            candidate = Candidate(
+                user_id=user_id,
+                name=user.email.split('@')[0]  # Use part of email as default name
             )
+            session.add(candidate)
+            session.commit()
+            session.refresh(candidate)
+            logger.info(f"[CANDIDATES] Candidate created for user_id: {user_id}")
         
-        candidate = Candidate(
-            user_id=user_id,
-            name=user.email.split('@')[0]  # Use part of email as default name
-        )
-        session.add(candidate)
-        session.commit()
-        session.refresh(candidate)
-    
-    return candidate
+        logger.info(f"[CANDIDATES] Returning candidate profile for user_id: {user_id}")
+        return candidate
+    except Exception as e:
+        logger.error(f"[CANDIDATES] Error in GET /me: {str(e)}", exc_info=True)
+        raise
 
 
 @router.put("/me", response_model=CandidateRead)
@@ -111,6 +122,31 @@ def get_candidate(candidate_id: int, session: Session = Depends(get_session)):
             detail="Candidate not found"
         )
     return candidate
+
+
+@router.get("/me/general-info-status", tags=["candidates"])
+def check_general_info_status(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Check if candidate has completed general information setup."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    return {
+        "is_general_info_complete": candidate.is_general_info_complete,
+        "has_required_fields": bool(candidate.name and candidate.email and candidate.phone),
+        "candidate_id": candidate.id
+    }
 
 
 # ============================================================================

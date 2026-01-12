@@ -100,6 +100,9 @@ class ResumeRead(BaseModel):
 
 class CandidateBase(BaseModel):
     name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    residential_address: Optional[str] = None
     location: Optional[str] = None
     profile_picture_path: Optional[str] = None
     
@@ -128,6 +131,7 @@ class CandidateCreate(CandidateBase):
 
 class CandidateRead(CandidateBase):
     id: int
+    is_general_info_complete: bool = False
     skills: List[SkillRead] = []
     certifications: List[CertificationRead] = []
     resumes: List[ResumeRead] = []
@@ -145,6 +149,9 @@ class CandidateRead(CandidateBase):
 
 class CandidateProfileUpdate(BaseModel):
     name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    residential_address: Optional[str] = None
     location: Optional[str] = None
     product: Optional[str] = None
     primary_role: Optional[str] = None
@@ -154,6 +161,7 @@ class CandidateProfileUpdate(BaseModel):
     rate_max: Optional[float] = None
     availability: Optional[str] = None
     work_type: Optional[str] = None
+    is_general_info_complete: Optional[bool] = None
 
 
 # ============================================================================

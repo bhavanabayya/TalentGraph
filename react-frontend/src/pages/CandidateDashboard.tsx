@@ -474,6 +474,7 @@ const CandidateDashboard: React.FC = () => {
       </header>
 
       <nav className="dashboard-tabs">
+        <button className={`tab ${activeTab === 'general-info' ? 'active' : ''}`} onClick={() => setActiveTab('general-info')}>General Information</button>
         <button className={`tab ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>Profile Dashboard</button>
         <button className={`tab ${activeTab === 'certifications' ? 'active' : ''}`} onClick={() => setActiveTab('certifications')}>Certifications</button>
         <button className={`tab ${activeTab === 'resumes' ? 'active' : ''}`} onClick={() => setActiveTab('resumes')}>Resumes</button>
@@ -484,6 +485,63 @@ const CandidateDashboard: React.FC = () => {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="dashboard-content">
+        {/* General Information Tab */}
+        {activeTab === 'general-info' && (
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div style={{ 
+              backgroundColor: 'white', 
+              padding: '30px', 
+              borderRadius: '8px', 
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' 
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                <h2 style={{ margin: 0 }}>General Information</h2>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => navigate('/edit-general-info')}
+                  style={{ fontSize: '14px' }}
+                >
+                  ✎ Edit Details
+                </button>
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(74, 158, 255, 0.1) 0%, rgba(43, 127, 217, 0.08) 100%)',
+                border: '2px solid #4a9eff',
+                borderRadius: '8px',
+                padding: '24px'
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Full Name</p>
+                    <p style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#333' }}>{profile?.name || '—'}</p>
+                  </div>
+                  
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Email Address</p>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 500, color: '#333' }}>{profile?.email || '—'}</p>
+                  </div>
+                  
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Phone Number</p>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 500, color: '#333' }}>{profile?.phone || '—'}</p>
+                  </div>
+                  
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Current Location</p>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 500, color: '#333' }}>{profile?.location || '—'}</p>
+                  </div>
+                  
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Residential Address</p>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 500, color: '#333' }}>{profile?.residential_address || '—'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Profile Dashboard Tab - Shows Main Profile + All Job Profiles */}
         {activeTab === 'profile' && profile && (
           <div className="profile-dashboard-section">

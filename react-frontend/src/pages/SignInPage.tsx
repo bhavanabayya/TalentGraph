@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authAPI } from '../api/client.ts';
+import { authAPI, candidateAPI } from '../api/client.ts';
 import { useAuth } from '../context/authStore.ts';
 import '../styles/Auth.css';
 
@@ -35,14 +35,25 @@ const SignInPage: React.FC = () => {
         
         // Redirect based on user type
         if (response.data.user_type === 'candidate') {
-          navigate('/candidate-dashboard');
+          // Check if candidate has completed general info
+          try {
+            const statusRes = await candidateAPI.getMe();
+            if (statusRes.data?.is_general_info_complete) {
+              // Existing user - go to dashboard
+              navigate('/candidate-dashboard');
+            } else {
+              // New user - go to general info form
+              navigate('/general-info');
+            }
+          } catch (err) {
+            console.error('Error checking general info status:', err);
+            // Default to general info for safety
+            navigate('/general-info');
+          }
         } else {
-          navigate('/company-dashboard');
+          // If needs_otp is true or no access_token, redirect to OTP
+          navigate('/otp-verify');
         }
-      } else if (response.data.needs_otp) {
-        // Legacy OTP flow (if needs_otp is true)
-        localStorage.setItem('pending_email', email);
-        navigate('/otp-verify');
       }
     } catch (err: any) {
       console.error('[SIGNIN] Error:', err);
