@@ -50,10 +50,13 @@ const SignInPage: React.FC = () => {
             // Default to general info for safety
             navigate('/general-info');
           }
-        } else {
-          // If needs_otp is true or no access_token, redirect to OTP
-          navigate('/otp-verify');
+        } else if (response.data.user_type === 'company') {
+          // Company/Recruiter user - go to company dashboard
+          navigate('/company-dashboard');
         }
+      } else {
+        // If needs_otp is true or no access_token, redirect to OTP
+        navigate('/otp-verify');
       }
     } catch (err: any) {
       console.error('[SIGNIN] Error:', err);

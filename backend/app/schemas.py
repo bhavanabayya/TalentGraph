@@ -270,6 +270,12 @@ class JobPostCreate(BaseModel):
     role: str
     seniority: Optional[str] = None
     
+    # New fields
+    job_type: Optional[str] = None  # "Permanent" or "Contract"
+    duration: Optional[str] = None  # e.g., "6 months"
+    start_date: Optional[str] = None  # Date string
+    currency: Optional[str] = None  # "USD", "EUR"
+    
     location: Optional[str] = None
     work_type: Optional[str] = None
     min_rate: Optional[float] = None
@@ -281,6 +287,10 @@ class JobPostCreate(BaseModel):
 class JobPostUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    job_type: Optional[str] = None
+    duration: Optional[str] = None
+    start_date: Optional[str] = None
+    currency: Optional[str] = None
     location: Optional[str] = None
     work_type: Optional[str] = None
     min_rate: Optional[float] = None

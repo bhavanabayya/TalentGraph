@@ -205,6 +205,12 @@ class JobPost(SQLModel, table=True):
     role: str  # e.g., "Oracle Fusion Functional Consultant"
     seniority: Optional[str] = None  # Junior / Mid / Senior
     
+    # New fields for recruiter portal
+    job_type: Optional[str] = None  # "Permanent" or "Contract"
+    duration: Optional[str] = None  # e.g., "6 months", "1 year"
+    start_date: Optional[datetime] = None  # Job start date
+    currency: Optional[str] = None  # "USD", "EUR", etc.
+    
     location: Optional[str] = None
     work_type: Optional[str] = None  # Remote / On-site / Hybrid
     min_rate: Optional[float] = None

@@ -16,6 +16,7 @@ import EditGeneralInfoPage from './pages/EditGeneralInfoPage.tsx';
 import CandidateDashboard from './pages/CandidateDashboard.tsx';
 import EditProfilePage from './pages/EditProfilePage.tsx';
 import CompanyDashboard from './pages/CompanyDashboard.tsx';
+import RecruiterJobPostingPage from './pages/RecruiterJobPostingPage.tsx';
 import JobPreferencesPage from './pages/JobPreferencesPage.tsx';
 import ProfileDashboard from './pages/ProfileDashboard.tsx';
 import JobDetailPage from './pages/JobDetailPage.tsx';
@@ -138,6 +139,16 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute
               element={<CompanyDashboard />}
+              requiredUserType="company"
+            />
+          }
+        />
+
+        <Route
+          path="/recruiter-job-posting"
+          element={
+            <ProtectedRoute
+              element={<RecruiterJobPostingPage />}
               requiredUserType="company"
             />
           }

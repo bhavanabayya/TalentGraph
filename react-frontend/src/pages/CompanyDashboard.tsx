@@ -15,7 +15,7 @@ const CompanyDashboard: React.FC = () => {
 
   const [jobs, setJobs] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState('jobs');
+  const [activeTab, setActiveTab] = useState('feed');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -264,11 +264,15 @@ const CompanyDashboard: React.FC = () => {
     <div className="dashboard-container">
       <header className="dashboard-header">
         <h1>Recruiter Dashboard</h1>
-        <button className="btn-logout" onClick={handleLogout}>Logout</button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter-job-posting')} style={{ fontSize: '14px' }}>
+            📝 Job Posting Portal
+          </button>
+          <button className="btn-logout" onClick={handleLogout}>Logout</button>
+        </div>
       </header>
 
       <nav className="dashboard-tabs">
-        <button className={`tab ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>Job Postings</button>
         <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => { setActiveTab('feed'); selectedJobId && loadCandidateFeed(selectedJobId); }}>Candidate Feed</button>
         <button className={`tab ${activeTab === 'shortlist' ? 'active' : ''}`} onClick={() => { setActiveTab('shortlist'); selectedJobId && loadShortlist(selectedJobId); }}>Shortlist</button>
         <button className={`tab ${activeTab === 'rankings' ? 'active' : ''}`} onClick={() => { setActiveTab('rankings'); selectedJobId && loadRankings(selectedJobId); }}>Rankings</button>
@@ -277,118 +281,6 @@ const CompanyDashboard: React.FC = () => {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="dashboard-content">
-        {/* Job Postings Tab */}
-        {activeTab === 'jobs' && (
-          <div className="jobs-section">
-            <h2>Job Postings</h2>
-
-            <div className="create-job">
-              <h3>Create New Job</h3>
-              <div className="form-group">
-                <label>Job Title</label>
-                <input type="text" value={newJob.title} onChange={(e) => setNewJob({ ...newJob, title: e.target.value })} placeholder="e.g., Oracle DBA" />
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <textarea value={newJob.description} onChange={(e) => setNewJob({ ...newJob, description: e.target.value })} rows={4} />
-              </div>
-              <div className="form-group">
-                <label>Product Author *</label>
-                <select value={newJob.product_author} onChange={(e) => { setNewJob({ ...newJob, product_author: e.target.value, product: '', role: '' }); setProducts([]); setRoles([]); }} onFocus={() => {}}>
-                  <option value="">Select Author...</option>
-                  {authors.map((a) => (<option key={a} value={a}>{a}</option>))}
-                </select>
-              </div>
-              {newJob.product_author && (
-                <div className="form-group">
-                  <label>Product *</label>
-                  <select value={newJob.product} onChange={(e) => { setNewJob({ ...newJob, product: e.target.value, role: '' }); setRoles([]); }} onFocus={() => handleLoadProducts(newJob.product_author)}>
-                    <option value="">Select Product...</option>
-                    {products.map((p) => (<option key={p} value={p}>{p}</option>))}
-                  </select>
-                </div>
-              )}
-              {newJob.product && (
-                <div className="form-group">
-                  <label>Role *</label>
-                  <select value={newJob.role} onChange={(e) => setNewJob({ ...newJob, role: e.target.value })} onFocus={() => handleLoadRoles(newJob.product_author, newJob.product)}>
-                    <option value="">Select Role...</option>
-                    {roles.map((r) => (<option key={r} value={r}>{r}</option>))}
-                  </select>
-                </div>
-              )}
-              <div className="form-group">
-                <label>Location</label>
-                <input type="text" value={newJob.location} onChange={(e) => setNewJob({ ...newJob, location: e.target.value })} placeholder="e.g., San Francisco, CA" />
-              </div>
-              <div className="form-group">
-                <label>Seniority Level</label>
-                <select value={newJob.seniority} onChange={(e) => setNewJob({ ...newJob, seniority: e.target.value })}>
-                  <option value="">Select...</option>
-                  <option value="Entry Level">Entry Level</option>
-                  <option value="Mid Level">Mid Level</option>
-                  <option value="Senior">Senior</option>
-                  <option value="Lead">Lead</option>
-                </select>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Rate Min ($)</label>
-                  <input type="number" value={newJob.min_rate} onChange={(e) => setNewJob({ ...newJob, min_rate: parseFloat(e.target.value) })} />
-                </div>
-                <div className="form-group">
-                  <label>Rate Max ($)</label>
-                  <input type="number" value={newJob.max_rate} onChange={(e) => setNewJob({ ...newJob, max_rate: parseFloat(e.target.value) })} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Work Type</label>
-                <select value={newJob.work_type} onChange={(e) => setNewJob({ ...newJob, work_type: e.target.value })}>
-                  <option value="Remote">Remote</option>
-                  <option value="On-site">On-site</option>
-                  <option value="Hybrid">Hybrid</option>
-                </select>
-              </div>
-              <button className="btn btn-secondary" onClick={handleCreateJob}>Create Job</button>
-            </div>
-
-            <div className="jobs-list">
-              <h3>Your Jobs ({jobs.length})</h3>
-              {jobs.length > 0 ? (
-                <table className="jobs-table">
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Location</th>
-                      <th>Work Type</th>
-                      <th>Rate Range</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jobs.map((job: any) => (
-                      <tr key={job.id}>
-                        <td>{job.title}</td>
-                        <td>{job.location}</td>
-                        <td>{job.work_type}</td>
-                        <td>${job.min_rate} - ${job.max_rate}</td>
-                        <td><span className={`status status-${job.status}`}>{job.status}</span></td>
-                        <td>
-                          <button className="btn-small" onClick={() => navigate(`/job/${job.id}`)}>View</button>
-                          <button className="btn-small btn-danger" onClick={() => handleDeleteJob(job.id)}>Delete</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p>No jobs posted yet</p>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Candidate Feed Tab */}
         {activeTab === 'feed' && (
           <div className="feed-section">

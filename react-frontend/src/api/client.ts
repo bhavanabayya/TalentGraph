@@ -428,6 +428,19 @@ export const jobsAPI = {
 
   delete: (jobId: number) =>
     apiClient.delete(`/jobs/${jobId}`),
+
+  // Recruiter-specific endpoints for managing job postings
+  getRecruiterPostings: () =>
+    apiClient.get<JobPost[]>('/jobs/recruiter/my-postings'),
+
+  createJobPosting: (data: Partial<JobPost>) =>
+    apiClient.post<JobPost>('/jobs/recruiter/create', data),
+
+  updateJobPosting: (jobId: number, data: Partial<JobPost>) =>
+    apiClient.put<JobPost>(`/jobs/recruiter/${jobId}`, data),
+
+  deleteJobPosting: (jobId: number) =>
+    apiClient.delete(`/jobs/recruiter/${jobId}`),
 };
 
 // ============================================================================
