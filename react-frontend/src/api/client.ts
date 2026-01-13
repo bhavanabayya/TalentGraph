@@ -85,6 +85,9 @@ export interface JobPreference {
   product_author_id: number;
   product_id: number;
   roles: string[];
+  primary_role?: string;
+  product?: string;
+  location?: string;
   seniority_level?: string;
   years_experience_min?: number;
   years_experience_max?: number;

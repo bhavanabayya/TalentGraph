@@ -186,27 +186,6 @@ const JobPreferencesPage: React.FC = () => {
     }
   };
 
-  const handleRoleToggle = (roleId: number) => {
-    const product = ontology.products.find((p) => p.id === formData.product_id);
-    if (product) {
-      const role = ontology.roles[product.name]?.find((r) => r.id === roleId);
-      if (role) {
-        const isSelected = formData.roles.includes(role.name);
-        if (isSelected) {
-          setFormData({
-            ...formData,
-            roles: formData.roles.filter((r) => r !== role.name),
-          });
-        } else {
-          setFormData({
-            ...formData,
-            roles: [...formData.roles, role.name],
-          });
-        }
-      }
-    }
-  };
-
   const handleAddSkill = () => {
     if (selectedSkill && !skillsWithRatings.find(s => s.name === selectedSkill)) {
       setSkillsWithRatings([...skillsWithRatings, { name: selectedSkill, rating: currentSkillRating }]);

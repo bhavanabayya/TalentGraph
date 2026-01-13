@@ -30,12 +30,7 @@ const CandidateDashboard: React.FC = () => {
   
   // Profile state
   const [profile, setProfile] = useState<any>(null);
-  const [formData, setFormData] = useState<any>({});
   const [applications, setApplications] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [preferences, setPreferences] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [resumes, setResumes] = useState<any[]>([]);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,46 +39,17 @@ const CandidateDashboard: React.FC = () => {
   const [saving, setSaving] = useState(false);
   
   // Multiple job profiles state
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [jobProfiles, setJobProfiles] = useState<any[]>([]);
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
   
   // Author/Product/Role dropdowns
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [authors, setAuthors] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [allSkills, setAllSkills] = useState<any[]>([]);
   
-  // Skills state for main profile and job preferences
+  // Skills state for main profile
   const [skillsInput, setSkillsInput] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [prefSkillsInput, setPrefSkillsInput] = useState<any[]>([]);
-  
-  // Preference form state
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [currentPreference, setCurrentPreference] = useState<any>({
-    product_author_id: 0,
-    product_id: 0,
-    roles: [],
-    years_experience_min: undefined,
-    years_experience_max: undefined,
-    hourly_rate_min: undefined,
-    hourly_rate_max: undefined,
-    required_skills: [],
-    work_type: '',
-    location_preferences: [],
-    availability: '',
-  });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedSkill, setSelectedSkill] = useState('');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedLocation, setSelectedLocation] = useState('');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [showPreferenceForm, setShowPreferenceForm] = useState(false);
   
   // Certifications state
   const [newCert, setNewCert] = useState({ name: '', issuer: '', year: '' });
@@ -98,32 +64,20 @@ const CandidateDashboard: React.FC = () => {
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      const [profileRes, resumesRes, appsRes, authorsRes, skillsRes, jobsRes, productsRes, jobProfilesRes] = await Promise.all([
+      const [profileRes, appsRes, jobsRes, productsRes, jobProfilesRes] = await Promise.all([
         candidateAPI.getMe(),
-        candidateAPI.listResumes().catch(() => ({ data: [] })),
         candidateAPI.listApplications().catch(() => ({ data: [] })),
-        jobRolesAPI.getAuthors().catch(() => ({ data: [] })),
-        jobRolesAPI.getSkills().catch(() => ({ data: [] })),
         apiClient.get('/jobs/available').catch(() => ({ data: [] })),
         jobRolesAPI.getProducts('Oracle').catch(() => ({ data: [] })),
         preferencesAPI.getMyPreferences().catch(() => ({ data: [] })),
       ]);
 
       setProfile(profileRes.data || {});
-      setFormData(profileRes.data || {});
-      setResumes(Array.isArray(resumesRes.data) ? resumesRes.data : []);
       setApplications(Array.isArray(appsRes.data) ? appsRes.data : []);
       
       // Handle job profiles
       const jobProfilesData = Array.isArray(jobProfilesRes?.data) ? jobProfilesRes.data : (jobProfilesRes as any)?.data?.data || [];
       setJobProfiles(jobProfilesData);
-      
-      // Handle authors response - could be array or wrapped in data
-      const authorsData = Array.isArray(authorsRes.data) ? authorsRes.data : authorsRes.data?.data || [];
-      setAuthors(authorsData);
-      
-      const skillsData = Array.isArray(skillsRes.data) ? skillsRes.data : skillsRes.data?.data || [];
-      setAllSkills(skillsData);
       
       // Handle jobs response
       const jobsData = Array.isArray(jobsRes.data) ? jobsRes.data : (jobsRes.data as any)?.data || [];
@@ -152,27 +106,6 @@ const CandidateDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const resetPreferenceForm = () => {
-    setCurrentPreference({
-      product_author_id: 0,
-      product_id: 0,
-      roles: [],
-      years_experience_min: undefined,
-      years_experience_max: undefined,
-      hourly_rate_min: undefined,
-      hourly_rate_max: undefined,
-      required_skills: [],
-      work_type: '',
-      location_preferences: [],
-      availability: '',
-    });
-    setSelectedSkill('');
-    setSelectedLocation('');
-    setProducts([]);
-    setRoles([]);
   };
 
   const handleLoadProducts = async (authorName: string) => {
@@ -210,87 +143,6 @@ const CandidateDashboard: React.FC = () => {
     } catch (err) {
       console.error('Error loading roles:', err);
       setRoles([]);
-    }
-  };
-
-  const handleUpdateProfile = async () => {
-    try {
-      setSaving(true);
-      // Only send fields that the backend expects
-      const updateData = {
-        name: formData.name,
-        location: formData.location,
-        summary: formData.summary,
-        product: formData.product,
-        primary_role: formData.primary_role,
-        years_experience: formData.years_experience,
-        rate_min: formData.rate_min,
-        rate_max: formData.rate_max,
-        availability: formData.availability,
-        work_type: formData.work_type,
-      };
-      await candidateAPI.updateMe(updateData);
-      
-      // Handle skill changes
-      const currentSkillNames = profile?.skills?.map((s: any) => s.name) || [];
-      const selectedSkillNames = [
-        ...(profile?.skills?.map((s: any) => s.name) || []),
-        ...skillsInput.map((s: any) => s.name)
-      ];
-      
-      // Delete skills that were removed from the SkillSelector
-      const skillsToDelete = currentSkillNames.filter((name: string) => !selectedSkillNames.includes(name));
-      for (const skillName of skillsToDelete) {
-        const skillId = profile?.skills?.find((s: any) => s.name === skillName)?.id;
-        if (skillId) {
-          await candidateAPI.removeSkill(skillId);
-        }
-      }
-      
-      // Add new skills with ratings
-      if (skillsInput && skillsInput.length > 0) {
-        for (const skill of skillsInput) {
-          await candidateAPI.addSkill({
-            name: skill.name,
-            rating: skill.rating || 3,
-            category: 'technical'
-          });
-        }
-      }
-      
-      setError('');
-      alert('Profile updated successfully');
-      setSkillsInput([]); // Clear the input after saving
-      await fetchAllData();
-    } catch (err: any) {
-      console.error('Update error:', err);
-      setError(err.response?.data?.detail || 'Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleAddSkill = async (skillName: string, category: string) => {
-    try {
-      setSaving(true);
-      await candidateAPI.addSkill({ name: skillName, category, level: 'Intermediate' });
-      await fetchAllData();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to add skill');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRemoveSkill = async (skillId: number) => {
-    try {
-      setSaving(true);
-      await candidateAPI.removeSkill(skillId);
-      await fetchAllData();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to remove skill');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -362,39 +214,6 @@ const CandidateDashboard: React.FC = () => {
     navigate('/');
   };
 
-  // ========== Multiple Job Profiles Handlers ==========
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleAddProfile = () => {
-    setFormMode('add');
-    setEditingProfile({
-      preference_name: '',
-      product: '',
-      primary_role: '',
-      years_experience: undefined,
-      rate_min: undefined,
-      rate_max: undefined,
-      work_type: '',
-      location: '',
-      availability: '',
-      summary: '',
-    });
-    setProducts([]);
-    setRoles([]);
-    setShowProfileForm(true);
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleEditProfile = (profile: any) => {
-    setFormMode('edit');
-    setEditingProfile(profile);
-    setShowProfileForm(true);
-    // Load roles for the product
-    if (profile.product) {
-      handleLoadRoles('Oracle', profile.product);
-    }
-  };
-
   const handleSaveProfile = async () => {
     if (!editingProfile.product || !editingProfile.primary_role) {
       setError('Please select both product and role');
@@ -452,22 +271,6 @@ const CandidateDashboard: React.FC = () => {
     } catch (err: any) {
       console.error('Error saving profile:', err);
       setError(err.response?.data?.detail || 'Failed to save profile');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleDeleteProfile = async (preferenceId: number) => {
-    try {
-      setSaving(true);
-      await preferencesAPI.delete(preferenceId);
-      setError('');
-      alert('Profile deleted successfully!');
-      await fetchAllData();
-    } catch (err: any) {
-      console.error('Error deleting profile:', err);
-      setError(err.response?.data?.detail || 'Failed to delete profile');
     } finally {
       setSaving(false);
     }
