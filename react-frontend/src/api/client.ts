@@ -228,6 +228,23 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     console.error(`[API-RESPONSE-ERROR] ${error.config?.url} - ${error.response?.status} - ${error.response?.data?.detail || error.message}`);
+    
+    // Handle expired/invalid token (401 Unauthorized or 403 Forbidden)
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const detail = error.response?.data?.detail || '';
+      // If token is invalid or user doesn't have access, clear auth and redirect to login
+      if (detail.includes('access required') || detail.includes('Invalid token') || detail.includes('Unauthorized')) {
+        console.log('[API] Token expired or invalid - clearing auth state');
+        removeToken();
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('user_type');
+        localStorage.removeItem('user_email');
+        localStorage.removeItem('company_role');
+        // Redirect to signin page
+        window.location.href = '/signin';
+      }
+    }
+    
     return Promise.reject(error);
   }
 );
