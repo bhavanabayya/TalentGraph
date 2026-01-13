@@ -6,6 +6,7 @@ import {
 } from '../api/client';
 import { useAuth } from '../context/authStore';
 import { SkillSelector } from '../components/SkillSelector';
+import AvailabilityDatePicker from '../components/AvailabilityDatePicker';
 import '../styles/Dashboard.css';
 
 // Technical and soft skills lists
@@ -228,27 +229,12 @@ const EditProfilePage: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label>Availability</label>
-              <input 
-                type="date" 
-                value={formData.availability || ''} 
-                onChange={(e) => {
-                  const date = e.target.value;
-                  if (date) {
-                    const dateObj = new Date(date);
-                    const formattedDate = dateObj.toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    });
-                    setFormData({ ...formData, availability: formattedDate });
-                  } else {
-                    setFormData({ ...formData, availability: '' });
-                  }
-                }}
-                style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+              <label>Availability Date</label>
+              <AvailabilityDatePicker
+                value={formData.availability}
+                onChange={(date) => setFormData({ ...formData, availability: date })}
+                placeholder="Select your availability date"
               />
-              <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>Select your availability date</small>
             </div>
 
             <div className="form-group">

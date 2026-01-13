@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../styles/AvailabilityDatePicker.css';
@@ -23,6 +23,15 @@ const AvailabilityDatePicker: React.FC<AvailabilityDatePickerProps> = ({
     value ? new Date(value) : null
   );
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Sync selectedDate with value prop changes
+  useEffect(() => {
+    if (value) {
+      setSelectedDate(new Date(value));
+    } else {
+      setSelectedDate(null);
+    }
+  }, [value]);
 
   const handleDateChange = (date: Date | null) => {
     if (date) {

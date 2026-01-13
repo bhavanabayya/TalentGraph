@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { preferencesAPI, jobRolesAPI, JobPreference } from '../api/client';
+import AvailabilityDatePicker from '../components/AvailabilityDatePicker';
 import '../styles/JobPreferences.css';
 
 interface Product {
@@ -301,7 +302,10 @@ const JobPreferencesPage: React.FC = () => {
   };
 
   const handleEdit = (pref: JobPreference) => {
-    setFormData(pref);
+    setFormData({
+      ...pref,
+      roles: pref.roles || [] // Ensure roles is always an array
+    });
     setEditingId(pref.id || null);
     setShowForm(true);
     
@@ -450,11 +454,11 @@ const JobPreferencesPage: React.FC = () => {
               <input
                 type="text"
                 placeholder="Auto-generated from selected role"
-                value={formData.preference_name || formData.roles[0] || ''}
-                disabled={!formData.roles.length}
+                value={formData.preference_name || (formData.roles && formData.roles[0]) || ''}
+                disabled={!formData.roles || !formData.roles.length}
                 style={{ 
-                  backgroundColor: !formData.roles.length ? '#f5f5f5' : 'white',
-                  cursor: !formData.roles.length ? 'not-allowed' : 'text'
+                  backgroundColor: !formData.roles || !formData.roles.length ? '#f5f5f5' : 'white',
+                  cursor: !formData.roles || !formData.roles.length ? 'not-allowed' : 'text'
                 }}
                 onChange={(e) => setFormData({ ...formData, preference_name: e.target.value })}
               />
@@ -775,27 +779,12 @@ const JobPreferencesPage: React.FC = () => {
 
             {/* Availability */}
             <div className="form-group">
-              <label>Availability</label>
-              <input
-                type="date"
-                value={formData.availability || ''}
-                onChange={(e) => {
-                  const date = e.target.value;
-                  if (date) {
-                    const dateObj = new Date(date);
-                    const formattedDate = dateObj.toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    });
-                    setFormData({ ...formData, availability: formattedDate });
-                  } else {
-                    setFormData({ ...formData, availability: '' });
-                  }
-                }}
-                style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+              <label>Availability Date</label>
+              <AvailabilityDatePicker
+                value={formData.availability}
+                onChange={(date) => setFormData({ ...formData, availability: date })}
+                placeholder="Select your availability date"
               />
-              <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>Select your availability date</small>
             </div>
 
             <div className="form-actions">
