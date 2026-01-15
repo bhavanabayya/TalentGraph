@@ -18,8 +18,10 @@ interface JobPosting {
   currency: 'USD' | 'EUR' | 'GBP';
   location?: string;
   work_type?: 'Remote' | 'On-site' | 'Hybrid';
-  min_rate?: number;
-  max_rate?: number;
+  min_rate?: number;  // Hourly rate for contracts
+  max_rate?: number;  // Hourly rate for contracts
+  salary_min?: number;  // Annual salary for permanent jobs
+  salary_max?: number;  // Annual salary for permanent jobs
   status?: string;
 }
 
@@ -45,7 +47,7 @@ const RecruiterJobPostingPage: React.FC = () => {
   const isRecruiterOnly = companyRole === 'RECRUITER';
 
   const [formData, setFormData] = useState<JobPosting>({
-    title: '',
+    title: '',  // Will be auto-set from role
     description: '',
     product_author: 'Oracle',
     product: '',
@@ -59,6 +61,8 @@ const RecruiterJobPostingPage: React.FC = () => {
     work_type: 'Remote',
     min_rate: undefined,
     max_rate: undefined,
+    salary_min: undefined,
+    salary_max: undefined,
   });
 
   useEffect(() => {
@@ -131,7 +135,7 @@ const RecruiterJobPostingPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.description || !formData.role) {
+    if (!formData.description || !formData.role) {
       setError('Please fill in all required fields');
       return;
     }
@@ -140,10 +144,14 @@ const RecruiterJobPostingPage: React.FC = () => {
       setSaving(true);
       setError('');
       
+      // Auto-set title from role
+      const jobData = { ...formData, title: formData.role };
+      console.log('Submitting job data:', jobData);
+      
       if (editingId) {
-        await jobsAPI.updateJobPosting(editingId, formData);
+        await jobsAPI.updateJobPosting(editingId, jobData);
       } else {
-        await jobsAPI.createJobPosting(formData);
+        await jobsAPI.createJobPosting(jobData);
       }
       
       setSuccessMessage(editingId ? 'Job posting updated!' : 'Job posting created!');
@@ -162,7 +170,7 @@ const RecruiterJobPostingPage: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      title: '',
+      title: '',  // Will be auto-set from role
       description: '',
       product_author: 'Oracle',
       product: '',
@@ -176,6 +184,8 @@ const RecruiterJobPostingPage: React.FC = () => {
       work_type: 'Remote',
       min_rate: undefined,
       max_rate: undefined,
+      salary_min: undefined,
+      salary_max: undefined,
     });
   };
 
@@ -249,17 +259,6 @@ const RecruiterJobPostingPage: React.FC = () => {
                 {/* Basic Information */}
                 <fieldset style={{ border: '1px solid #e0e0e0', padding: '20px', marginBottom: '20px', borderRadius: '8px' }}>
                   <legend style={{ padding: '0 10px', fontWeight: 600 }}>Job Details</legend>
-
-                  <div className="form-group">
-                    <label>Job Title *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Senior Oracle Fusion Consultant"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      required
-                    />
-                  </div>
 
                   <div className="form-group">
                     <label>Description *</label>
@@ -435,30 +434,57 @@ const RecruiterJobPostingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Hourly Rate Min</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="e.g., 50"
-                        value={formData.min_rate || ''}
-                        onChange={(e) => setFormData({ ...formData, min_rate: e.target.value ? parseFloat(e.target.value) : undefined })}
-                      />
+                  {formData.job_type === 'Contract' ? (
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Hourly Rate Min ($/hr)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="e.g., 50"
+                          value={formData.min_rate || ''}
+                          onChange={(e) => setFormData({ ...formData, min_rate: e.target.value ? parseFloat(e.target.value) : undefined })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Hourly Rate Max ($/hr)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="e.g., 100"
+                          value={formData.max_rate || ''}
+                          onChange={(e) => setFormData({ ...formData, max_rate: e.target.value ? parseFloat(e.target.value) : undefined })}
+                        />
+                      </div>
                     </div>
-                    <div className="form-group">
-                      <label>Hourly Rate Max</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="e.g., 100"
-                        value={formData.max_rate || ''}
-                        onChange={(e) => setFormData({ ...formData, max_rate: e.target.value ? parseFloat(e.target.value) : undefined })}
-                      />
+                  ) : (
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Annual Salary Min</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1000"
+                          placeholder="e.g., 80000"
+                          value={formData.salary_min || ''}
+                          onChange={(e) => setFormData({ ...formData, salary_min: e.target.value ? parseFloat(e.target.value) : undefined })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Annual Salary Max</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1000"
+                          placeholder="e.g., 120000"
+                          value={formData.salary_max || ''}
+                          onChange={(e) => setFormData({ ...formData, salary_max: e.target.value ? parseFloat(e.target.value) : undefined })}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </fieldset>
 
                 {/* Form Actions */}
@@ -642,13 +668,22 @@ const RecruiterJobPostingPage: React.FC = () => {
                       </p>
                     </div>
                     <div>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Hourly Rate</p>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>
+                        {job.job_type === 'Contract' ? 'Hourly Rate' : 'Annual Salary'}
+                      </p>
                       <p style={{ margin: 0, fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>
-                        {job.min_rate && job.max_rate 
-                          ? `${job.currency || 'USD'} ${job.min_rate} - ${job.max_rate}/hr`
-                          : job.min_rate
-                          ? `${job.currency || 'USD'} ${job.min_rate}+/hr`
-                          : 'Not specified'}
+                        {job.job_type === 'Contract' 
+                          ? (job.min_rate && job.max_rate 
+                            ? `${job.currency || 'USD'} ${job.min_rate} - ${job.max_rate}/hr`
+                            : job.min_rate
+                            ? `${job.currency || 'USD'} ${job.min_rate}+/hr`
+                            : 'Not specified')
+                          : (job.salary_min && job.salary_max
+                            ? `${job.currency || 'USD'} ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}/yr`
+                            : job.salary_min
+                            ? `${job.currency || 'USD'} ${job.salary_min.toLocaleString()}+/yr`
+                            : 'Not specified')
+                        }
                       </p>
                     </div>
                   </div>

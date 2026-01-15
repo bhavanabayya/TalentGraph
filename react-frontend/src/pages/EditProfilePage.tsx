@@ -110,6 +110,8 @@ const EditProfilePage: React.FC = () => {
         years_experience: formData.years_experience,
         rate_min: formData.rate_min,
         rate_max: formData.rate_max,
+        visa_type: formData.visa_type,
+        ethnicity: formData.ethnicity,
         availability: formData.availability,
         work_type: formData.work_type,
       };
@@ -248,6 +250,47 @@ const EditProfilePage: React.FC = () => {
                 <option value="On-site">On-site</option>
                 <option value="Hybrid">Hybrid</option>
               </select>
+            </div>
+
+            <div className="form-group">
+              <label>Visa / Work Authorization Status</label>
+              <select
+                value={formData.visa_type || ''}
+                onChange={(e) => setFormData({ ...formData, visa_type: e.target.value })}
+              >
+                <option value="">Select visa status</option>
+                <option value="US Citizen">US Citizen</option>
+                <option value="Green Card / Permanent Resident">Green Card / Permanent Resident</option>
+                <option value="H1B">H1B</option>
+                <option value="OPT">OPT</option>
+                <option value="CPT">CPT</option>
+                <option value="L1">L1</option>
+                <option value="TN Visa">TN Visa</option>
+                <option value="EAD">EAD (Employment Authorization Document)</option>
+                <option value="Requires Sponsorship">Requires Sponsorship</option>
+                <option value="Not Authorized">Not Authorized to Work in US</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Ethnicity (Optional - for diversity tracking)</label>
+              <select
+                value={formData.ethnicity || ''}
+                onChange={(e) => setFormData({ ...formData, ethnicity: e.target.value })}
+              >
+                <option value="">Select ethnicity</option>
+                <option value="American Indian or Alaska Native">American Indian or Alaska Native</option>
+                <option value="Asian">Asian</option>
+                <option value="Black or African American">Black or African American</option>
+                <option value="Hispanic or Latino">Hispanic or Latino</option>
+                <option value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</option>
+                <option value="White">White</option>
+                <option value="Two or More Races">Two or More Races</option>
+                <option value="Prefer not to disclose">Prefer not to disclose</option>
+              </select>
+              <small style={{ color: '#666', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                This information helps promote diversity and inclusion. Your response is voluntary and confidential.
+              </small>
             </div>
 
             <h3>Product/Role Focus</h3>

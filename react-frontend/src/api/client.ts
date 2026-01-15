@@ -18,28 +18,17 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface SendOTPRequest {
-  email: string;
-}
-
-export interface VerifyOTPRequest {
-  email: string;
-  code: string;
-}
-
-export interface VerifyOTPResponse {
-  access_token: string;
-  token_type: string;
-  user_id: number;
-  user_type: string;
-}
-
 export interface CandidateProfile {
   id?: number;
   user_id?: number;
   name: string;
+  email?: string;
+  phone?: string;
+  residential_address?: string;
   location?: string;
   profile_picture_path?: string;
+  visa_type?: string;
+  ethnicity?: string;
   product_author?: string;
   product?: string;
   primary_role?: string;
@@ -52,7 +41,8 @@ export interface CandidateProfile {
   location_preference_1?: string;
   location_preference_2?: string;
   location_preference_3?: string;
-  skills?: Array<{ id: number; name: string; level?: string; category?: string }>;
+  is_general_info_complete?: boolean;
+  skills?: Array<{ id: number; name: string; level?: string; category?: string; rating?: number }>;
   certifications?: any[];
   resumes?: any[];
   applications?: any[];
@@ -95,6 +85,8 @@ export interface JobPreference {
   hourly_rate_max?: number;
   required_skills?: string[] | string;
   work_type?: string;
+  visa_type?: string;
+  ethnicity?: string;
   location_preferences?: string[];
   availability?: string;
   preference_name?: string;
@@ -127,10 +119,16 @@ export interface JobPost {
   product: string;
   role: string;
   seniority?: string;
+  job_type?: string;
+  duration?: string;
+  start_date?: string;
+  currency?: string;
   location?: string;
   work_type?: string;
   min_rate?: number;
   max_rate?: number;
+  salary_min?: number;
+  salary_max?: number;
   required_skills?: string[];
   nice_to_have_skills?: string[];
   status: string;
@@ -268,22 +266,6 @@ export const authAPI = {
     console.log(`[AUTH-API] Login attempt - email: ${data.email}`);
     return apiClient.post('/auth/login', data).then(res => {
       console.log('[AUTH-API] Login successful - returning response');
-      return res;
-    });
-  },
-
-  sendOTP: (data: SendOTPRequest) => {
-    console.log(`[AUTH-API] Sending OTP to ${data.email}`);
-    return apiClient.post('/auth/send-otp', data).then(res => {
-      console.log(`[AUTH-API] OTP sent successfully`);
-      return res;
-    });
-  },
-
-  verifyOTP: (data: VerifyOTPRequest) => {
-    console.log(`[AUTH-API] Verifying OTP for ${data.email}`);
-    return apiClient.post<VerifyOTPResponse>('/auth/verify-otp', data).then(res => {
-      console.log('[AUTH-API] OTP verified successfully - token received');
       return res;
     });
   },

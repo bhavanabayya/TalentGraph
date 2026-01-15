@@ -118,6 +118,10 @@ class CandidateBase(BaseModel):
     location: Optional[str] = None
     profile_picture_path: Optional[str] = None
     
+    # Visa and Diversity Information
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
+    
     product_author: Optional[str] = None
     product: Optional[str] = None
     
@@ -166,6 +170,8 @@ class CandidateProfileUpdate(BaseModel):
     phone: Optional[str] = None
     residential_address: Optional[str] = None
     location: Optional[str] = None
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
     product: Optional[str] = None
     primary_role: Optional[str] = None
     summary: Optional[str] = None
@@ -190,6 +196,8 @@ class JobPreferenceCreate(BaseModel):
     rate_max: Optional[float] = None
     work_type: Optional[str] = None
     location: Optional[str] = None
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
     availability: Optional[str] = None
     summary: Optional[str] = None
     required_skills: Optional[list] = None  # [{\"name\": \"skill\", \"rating\": 1-5}, ...]
@@ -204,6 +212,8 @@ class JobPreferenceUpdate(BaseModel):
     rate_max: Optional[float] = None
     work_type: Optional[str] = None
     location: Optional[str] = None
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
     availability: Optional[str] = None
     summary: Optional[str] = None
     required_skills: Optional[list] = None  # [{\"name\": \"skill\", \"rating\": 1-5}, ...]
@@ -220,6 +230,8 @@ class JobPreferenceRead(BaseModel):
     rate_max: Optional[float] = None
     work_type: Optional[str] = None
     location: Optional[str] = None
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
     availability: Optional[str] = None
     summary: Optional[str] = None
     required_skills: Optional[str] = None  # JSON string
@@ -264,7 +276,7 @@ class CompanyProfileRead(CompanyAccountRead):
 # ============================================================================
 
 class JobPostCreate(BaseModel):
-    title: str
+    title: Optional[str] = None  # Auto-generated from role if not provided
     description: Optional[str] = None
     product_author: str  # "Oracle" for POC
     product: str  # "Oracle EBS", "Oracle Fusion"
@@ -279,8 +291,10 @@ class JobPostCreate(BaseModel):
     
     location: Optional[str] = None
     work_type: Optional[str] = None
-    min_rate: Optional[float] = None
-    max_rate: Optional[float] = None
+    min_rate: Optional[float] = None  # Hourly rate for contracts
+    max_rate: Optional[float] = None  # Hourly rate for contracts
+    salary_min: Optional[float] = None  # Annual salary for permanent jobs
+    salary_max: Optional[float] = None  # Annual salary for permanent jobs
     required_skills: Optional[List[str]] = None
     nice_to_have_skills: Optional[List[str]] = None
     
@@ -292,6 +306,10 @@ class JobPostCreate(BaseModel):
 class JobPostUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    product_author: Optional[str] = None
+    product: Optional[str] = None
+    role: Optional[str] = None
+    seniority: Optional[str] = None
     job_type: Optional[str] = None
     duration: Optional[str] = None
     start_date: Optional[str] = None
@@ -300,6 +318,8 @@ class JobPostUpdate(BaseModel):
     work_type: Optional[str] = None
     min_rate: Optional[float] = None
     max_rate: Optional[float] = None
+    salary_min: Optional[float] = None
+    salary_max: Optional[float] = None
     status: Optional[str] = None
     assigned_to_user_id: Optional[int] = None
 

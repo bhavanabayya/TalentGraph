@@ -469,6 +469,14 @@ const CandidateDashboard: React.FC = () => {
                     <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Work Type</p>
                     <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.work_type || '—'}</p>
                   </div>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Visa Status</p>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.visa_type || '—'}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Ethnicity</p>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>{profile.ethnicity || 'Not disclosed'}</p>
+                  </div>
                 </div>
 
                 {/* Skills Section */}
@@ -1154,15 +1162,22 @@ const CandidateDashboard: React.FC = () => {
                         </p>
                       </div>
                       <div>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>Hourly Rate</p>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#999', textTransform: 'uppercase' }}>
+                          {job.job_type === 'Contract' ? 'Hourly Rate' : 'Annual Salary'}
+                        </p>
                         <p style={{ margin: 0, fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>
-                          {job.min_rate && job.max_rate 
-                            ? `${job.currency || 'USD'} ${job.min_rate} - ${job.max_rate}/hr`
-                            : job.min_rate
-                            ? `${job.currency || 'USD'} ${job.min_rate}+/hr`
-                            : job.salary_min && job.salary_max
-                            ? `$${job.salary_min}k - $${job.salary_max}k/yr`
-                            : 'Not specified'}
+                          {job.job_type === 'Contract' 
+                            ? (job.min_rate && job.max_rate 
+                              ? `${job.currency || 'USD'} ${job.min_rate} - ${job.max_rate}/hr`
+                              : job.min_rate
+                              ? `${job.currency || 'USD'} ${job.min_rate}+/hr`
+                              : 'Not specified')
+                            : (job.salary_min && job.salary_max
+                              ? `${job.currency || 'USD'} ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}/yr`
+                              : job.salary_min
+                              ? `${job.currency || 'USD'} ${job.salary_min.toLocaleString()}+/yr`
+                              : 'Not specified')
+                          }
                         </p>
                       </div>
                     </div>

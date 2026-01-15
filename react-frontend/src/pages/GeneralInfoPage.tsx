@@ -46,10 +46,6 @@ const GeneralInfoPage: React.FC = () => {
     navigate('/edit-general-info');
   };
 
-  const handleContinueToDashboard = () => {
-    navigate('/candidate-dashboard');
-  };
-
   if (loading) return <div className="dashboard-container loading">Loading...</div>;
 
   return (
@@ -109,7 +105,7 @@ const GeneralInfoPage: React.FC = () => {
                 borderRadius: '8px',
                 padding: '24px'
               }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', '@media (max-width: 600px)': { gridTemplateColumns: '1fr' } }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   <div>
                     <p style={{ margin: '0 0 8px 0', color: '#999', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase' }}>Full Name</p>
                     <p style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#333' }}>{profile.name || '—'}</p>

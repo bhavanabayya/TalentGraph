@@ -98,6 +98,10 @@ class CandidateJobPreference(SQLModel, table=True):
     work_type: Optional[str] = None  # Remote / On-site / Hybrid
     location: Optional[str] = None
     
+    # Visa and Diversity Information for this profile
+    visa_type: Optional[str] = None  # "Citizen", "Permanent Resident", "H1B", "OPT", "Requires Sponsorship", etc.
+    ethnicity: Optional[str] = None  # Optional for diversity tracking
+    
     # Availability
     availability: Optional[str] = None  # Immediately / 2 weeks / 1 month
     
@@ -126,6 +130,10 @@ class Candidate(SQLModel, table=True):
     residential_address: Optional[str] = None  # Full residential address
     location: Optional[str] = None  # City/Location preference
     profile_picture_path: Optional[str] = None
+    
+    # Visa and Diversity Information
+    visa_type: Optional[str] = None  # "Citizen", "Permanent Resident", "H1B", "OPT", "Requires Sponsorship", etc.
+    ethnicity: Optional[str] = None  # Optional for diversity tracking (e.g., "Asian", "Black or African American", "Hispanic or Latino", "White", "Prefer not to disclose")
     
     # General Info Completion Flag
     is_general_info_complete: bool = False  # Tracks if user has completed initial general info setup
@@ -215,8 +223,10 @@ class JobPost(SQLModel, table=True):
     
     location: Optional[str] = None
     work_type: Optional[str] = None  # Remote / On-site / Hybrid
-    min_rate: Optional[float] = None
-    max_rate: Optional[float] = None
+    min_rate: Optional[float] = None  # Hourly rate for contracts
+    max_rate: Optional[float] = None  # Hourly rate for contracts
+    salary_min: Optional[float] = None  # Annual salary for permanent jobs
+    salary_max: Optional[float] = None  # Annual salary for permanent jobs
     required_skills: Optional[str] = None  # JSON array of skill names
     nice_to_have_skills: Optional[str] = None  # JSON array
     

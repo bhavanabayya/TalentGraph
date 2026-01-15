@@ -55,11 +55,15 @@ def create_job(
     nice_to_have_json = json.dumps(req.nice_to_have_skills or [])
     logger.info(f"[JOB_CREATE] Skills serialized - required: {len(req.required_skills or [])}, nice_to_have: {len(req.nice_to_have_skills or [])}")
     
+    # Auto-set title from role if not provided
+    job_title = req.title if req.title else req.role
+    logger.info(f"[JOB_CREATE] Job title: {job_title}")
+    
     # Create job post
     logger.info(f"[JOB_CREATE] Creating JobPost record in database")
     job = JobPost(
         company_id=company_id,
-        title=req.title,
+        title=job_title,
         description=req.description,
         product_author=req.product_author,
         product=req.product,
@@ -73,6 +77,8 @@ def create_job(
         work_type=req.work_type,
         min_rate=req.min_rate,
         max_rate=req.max_rate,
+        salary_min=req.salary_min,
+        salary_max=req.salary_max,
         required_skills=required_skills_json,
         nice_to_have_skills=nice_to_have_json,
         status="active"
@@ -100,6 +106,8 @@ def create_job(
         work_type=job.work_type,
         min_rate=job.min_rate,
         max_rate=job.max_rate,
+        salary_min=job.salary_min,
+        salary_max=job.salary_max,
         required_skills=req.required_skills or [],
         nice_to_have_skills=req.nice_to_have_skills or [],
         status=job.status,
@@ -132,10 +140,16 @@ def list_available_jobs(
             product=job.product,
             role=job.role,
             seniority=job.seniority,
+            job_type=job.job_type,
+            duration=job.duration,
+            start_date=job.start_date.isoformat() if job.start_date else None,
+            currency=job.currency,
             location=job.location,
             work_type=job.work_type,
             min_rate=job.min_rate,
             max_rate=job.max_rate,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
             required_skills=json.loads(job.required_skills or "[]"),
             nice_to_have_skills=json.loads(job.nice_to_have_skills or "[]"),
             status=job.status,
@@ -175,10 +189,16 @@ def list_company_jobs(
             product=job.product,
             role=job.role,
             seniority=job.seniority,
+            job_type=job.job_type,
+            duration=job.duration,
+            start_date=job.start_date.isoformat() if job.start_date else None,
+            currency=job.currency,
             location=job.location,
             work_type=job.work_type,
             min_rate=job.min_rate,
             max_rate=job.max_rate,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
             required_skills=json.loads(job.required_skills or "[]"),
             nice_to_have_skills=json.loads(job.nice_to_have_skills or "[]"),
             status=job.status,
@@ -231,6 +251,8 @@ def get_company_all_postings(
             work_type=job.work_type,
             min_rate=job.min_rate,
             max_rate=job.max_rate,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
             required_skills=json.loads(job.required_skills or "[]"),
             nice_to_have_skills=json.loads(job.nice_to_have_skills or "[]"),
             status=job.status,
@@ -266,10 +288,16 @@ def get_job(
         product=job.product,
         role=job.role,
         seniority=job.seniority,
+        job_type=job.job_type,
+        duration=job.duration,
+        start_date=job.start_date.isoformat() if job.start_date else None,
+        currency=job.currency,
         location=job.location,
         work_type=job.work_type,
         min_rate=job.min_rate,
         max_rate=job.max_rate,
+        salary_min=job.salary_min,
+        salary_max=job.salary_max,
         required_skills=json.loads(job.required_skills or "[]"),
         nice_to_have_skills=json.loads(job.nice_to_have_skills or "[]"),
         status=job.status,
@@ -427,6 +455,8 @@ def get_recruiter_accessible_postings(
             work_type=job.work_type,
             min_rate=job.min_rate,
             max_rate=job.max_rate,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
             required_skills=json.loads(job.required_skills or "[]"),
             nice_to_have_skills=json.loads(job.nice_to_have_skills or "[]"),
             status=job.status,
@@ -496,6 +526,8 @@ def get_jobs_assigned_to_me(
             work_type=job.work_type,
             min_rate=job.min_rate,
             max_rate=job.max_rate,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
             required_skills=json.loads(job.required_skills or "[]"),
             nice_to_have_skills=json.loads(job.nice_to_have_skills or "[]"),
             status=job.status,
@@ -678,6 +710,8 @@ def get_recruiter_job_postings(
             work_type=job.work_type,
             min_rate=job.min_rate,
             max_rate=job.max_rate,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
             required_skills=json.loads(job.required_skills or "[]"),
             nice_to_have_skills=json.loads(job.nice_to_have_skills or "[]"),
             status=job.status,
@@ -722,6 +756,9 @@ def recruiter_create_job(
     required_skills_json = json.dumps(req.required_skills or [])
     nice_to_have_json = json.dumps(req.nice_to_have_skills or [])
     
+    # Auto-set title from role if not provided
+    job_title = req.title if req.title else req.role
+    
     # Convert start_date string to datetime if provided
     start_date = None
     if req.start_date:
@@ -734,7 +771,7 @@ def recruiter_create_job(
     job = JobPost(
         company_id=company_id,
         created_by_user_id=company_user.id,  # Track who created the job
-        title=req.title,
+        title=job_title,
         description=req.description,
         product_author=req.product_author,
         product=req.product,
@@ -748,6 +785,8 @@ def recruiter_create_job(
         work_type=req.work_type,
         min_rate=req.min_rate,
         max_rate=req.max_rate,
+        salary_min=req.salary_min,
+        salary_max=req.salary_max,
         required_skills=required_skills_json,
         nice_to_have_skills=nice_to_have_json,
         status="active"
@@ -774,6 +813,8 @@ def recruiter_create_job(
         work_type=job.work_type,
         min_rate=job.min_rate,
         max_rate=job.max_rate,
+        salary_min=job.salary_min,
+        salary_max=job.salary_max,
         required_skills=req.required_skills or [],
         nice_to_have_skills=req.nice_to_have_skills or [],
         status=job.status,
@@ -807,6 +848,8 @@ def recruiter_update_job(
     # Update fields
     if req.title:
         job.title = req.title
+    elif req.role:  # If role is being updated but not title, auto-set title from role
+        job.title = req.role
     if req.description:
         job.description = req.description
     if req.job_type:
@@ -825,10 +868,25 @@ def recruiter_update_job(
         job.location = req.location
     if req.work_type:
         job.work_type = req.work_type
+    if req.role:
+        job.role = req.role
+        # Auto-update title if role changes and title isn't explicitly set
+        if not req.title:
+            job.title = req.role
+    if req.product:
+        job.product = req.product
+    if req.product_author:
+        job.product_author = req.product_author
+    if req.seniority:
+        job.seniority = req.seniority
     if req.min_rate is not None:
         job.min_rate = req.min_rate
     if req.max_rate is not None:
         job.max_rate = req.max_rate
+    if req.salary_min is not None:
+        job.salary_min = req.salary_min
+    if req.salary_max is not None:
+        job.salary_max = req.salary_max
     if req.status:
         job.status = req.status
     
