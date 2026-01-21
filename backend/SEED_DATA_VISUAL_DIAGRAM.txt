@@ -1,0 +1,315 @@
+# TalentGraph Seed Data - Visual Data Structure
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         TALENTGRAPH SEED DATA STRUCTURE                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ USER ACCOUNTS (5 total)                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    CANDIDATE USERS (2)                          │
+    └─────────────────────────────────────────────────────────────────┘
+    
+    User #1                              User #2
+    ┌──────────────────────┐            ┌──────────────────────┐
+    │ sarah.anderson@      │            │ michael.chen@        │
+    │ email.com            │            │ email.com            │
+    │                      │            │                      │
+    │ Type: candidate      │            │ Type: candidate      │
+    │ Active: true         │            │ Active: true         │
+    └──────────┬───────────┘            └──────────┬───────────┘
+               │                                   │
+               │ has                               │ has
+               │                                   │
+               ▼                                   ▼
+    ┌──────────────────────┐            ┌──────────────────────┐
+    │ Candidate Profile    │            │ Candidate Profile    │
+    │ Sarah Anderson       │            │ Michael Chen         │
+    ├──────────────────────┤            ├──────────────────────┤
+    │ • 8 years exp        │            │ • 6 years exp        │
+    │ • Fusion Consultant  │            │ • HCM Consultant     │
+    │ • San Francisco, CA  │            │ • Austin, TX         │
+    │ • Remote             │            │ • Hybrid             │
+    │ • $125-175/hr        │            │ • $110-150/hr        │
+    └──────────┬───────────┘            └──────────┬───────────┘
+               │                                   │
+               │ has (one-to-many)                 │ has (one-to-many)
+               │                                   │
+    ┌──────────┴───────────────────────────────────┴───────────┐
+    │                                                            │
+    ▼                                                            ▼
+┌─────────────────────┐                           ┌─────────────────────┐
+│ Skills (8)          │                           │ Skills (9)          │
+├─────────────────────┤                           ├─────────────────────┤
+│ • Oracle Fusion (5) │                           │ • Oracle HCM (5)    │
+│ • Oracle EBS (4)    │                           │ • Core HR (5)       │
+│ • Financial (5)     │                           │ • Talent Mgmt (4)   │
+│ • SCM (4)           │                           │ • Payroll (4)       │
+│ • SQL (4)           │                           │ • HSDL (4)          │
+│ • OTBI (5)          │                           │ • Fast Formulas (5) │
+│ • Project Mgmt (4)  │                           │ • BIP Reports (4)   │
+│ • Communication (5) │                           │ • Change Mgmt (4)   │
+└─────────────────────┘                           │ • Training (5)      │
+                                                  └─────────────────────┘
+    │                                                 │
+    ▼                                                 ▼
+┌─────────────────────┐                           ┌─────────────────────┐
+│ Certifications (3)  │                           │ Certifications (3)  │
+├─────────────────────┤                           ├─────────────────────┤
+│ • OCI Foundations   │                           │ • HCM Cloud Impl    │
+│ • Fusion Financials │                           │ • Talent Mgmt Cloud │
+│ • PMP               │                           │ • SHRM-CP           │
+└─────────────────────┘                           └─────────────────────┘
+    │                                                 │
+    ▼                                                 ▼
+┌─────────────────────┐                           ┌─────────────────────┐
+│ Social Links (3)    │                           │ Social Links (2)    │
+├─────────────────────┤                           ├─────────────────────┤
+│ • LinkedIn          │                           │ • LinkedIn          │
+│ • GitHub            │                           │ • Portfolio         │
+│ • Portfolio Site    │                           └─────────────────────┘
+└─────────────────────┘
+    │                                                 │
+    ▼                                                 ▼
+┌─────────────────────┐                           ┌─────────────────────┐
+│ Job Preferences (2) │                           │ Job Preferences (2) │
+├─────────────────────┤                           ├─────────────────────┤
+│ 1. Fusion Finance   │                           │ 1. HCM Full Impl    │
+│    • Senior Role    │                           │    • Hybrid         │
+│    • Remote         │                           │    • $120-160/hr    │
+│    • $140-180/hr    │                           │                     │
+│                     │                           │ 2. Payroll Spec     │
+│ 2. EBS Supply Chain │                           │    • Remote         │
+│    • Hybrid         │                           │    • $115-155/hr    │
+│    • $130-170/hr    │                           └─────────────────────┘
+└─────────────────────┘
+
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    COMPANY USERS (3)                            │
+    └─────────────────────────────────────────────────────────────────┘
+    
+    User #3                   User #4                   User #5
+    ┌───────────────┐        ┌───────────────┐        ┌───────────────┐
+    │ hr.admin@     │        │ recruiter.    │        │ hr.manager@   │
+    │ techcorp.com  │        │ jane@         │        │ techcorp.com  │
+    │               │        │ techcorp.com  │        │               │
+    │ Type: company │        │ Type: company │        │ Type: company │
+    │ Active: true  │        │ Active: true  │        │ Active: true  │
+    └───────┬───────┘        └───────┬───────┘        └───────┬───────┘
+            │                        │                        │
+            │ has                    │ has                    │ has
+            │                        │                        │
+            ▼                        ▼                        ▼
+    ┌───────────────┐        ┌───────────────┐        ┌───────────────┐
+    │ CompanyUser   │        │ CompanyUser   │        │ CompanyUser   │
+    │ Jennifer      │        │ Jane          │        │ Robert        │
+    │ Smith         │        │ Williams      │        │ Johnson       │
+    ├───────────────┤        ├───────────────┤        ├───────────────┤
+    │ Role: ADMIN   │        │ Role: HR      │        │ Role: HR      │
+    │ Active: true  │        │ Active: true  │        │ Active: true  │
+    └───────┬───────┘        └───────┬───────┘        └───────┬───────┘
+            │                        │                        │
+            └────────────┬───────────┴────────────────────────┘
+                         │ belongs to
+                         ▼
+            ┌────────────────────────────────┐
+            │     COMPANY ACCOUNT (1)        │
+            │     TechCorp Solutions         │
+            ├────────────────────────────────┤
+            │ • San Francisco, CA            │
+            │ • Enterprise Consulting        │
+            │ • Oracle Cloud Specialists     │
+            └────────────┬───────────────────┘
+                         │
+                         │ has
+                         ▼
+            ┌────────────────────────────────┐
+            │     JOB POSTINGS (6)           │
+            └────────────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ JOB POSTINGS (6 Active)                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Job #1                           Job #2                           Job #3
+┌──────────────────────┐        ┌──────────────────────┐        ┌──────────────────────┐
+│ Senior Fusion        │        │ HCM Cloud            │        │ EBS Supply Chain     │
+│ Financials           │        │ Implementation       │        │ Consultant           │
+├──────────────────────┤        ├──────────────────────┤        ├──────────────────────┤
+│ Contract | 12 months │        │ Contract | 9 months  │        │ Contract | 6 months  │
+│ $140-180/hr          │        │ $120-160/hr          │        │ $130-170/hr          │
+│ SF, CA | Hybrid      │        │ Austin, TX | Hybrid  │        │ Remote               │
+│ Senior Level         │        │ Mid-Senior Level     │        │ Senior Level         │
+│                      │        │                      │        │                      │
+│ Skills Required:     │        │ Skills Required:     │        │ Skills Required:     │
+│ • Fusion Financials  │        │ • HCM Cloud          │        │ • Oracle EBS         │
+│ • General Ledger     │        │ • Core HR            │        │ • Inventory Mgmt     │
+│ • AP/AR              │        │ • Talent Mgmt        │        │ • Order Mgmt         │
+│ • OTBI               │        │ • Payroll            │        │ • Purchasing         │
+│ • Data Migration     │        │ • Fast Formulas      │        │ • SQL                │
+└──────────────────────┘        └──────────────────────┘        └──────────────────────┘
+
+Job #4                           Job #5                           Job #6
+┌──────────────────────┐        ┌──────────────────────┐        ┌──────────────────────┐
+│ Payroll Cloud        │        │ Fusion Technical     │        │ Junior Fusion        │
+│ Specialist           │        │ Consultant           │        │ Financials           │
+├──────────────────────┤        ├──────────────────────┤        ├──────────────────────┤
+│ Contract | 8 months  │        │ Permanent            │        │ Permanent            │
+│ $115-155/hr          │        │ $140-180k/year       │        │ $75-95k/year         │
+│ Remote               │        │ SF, CA | Hybrid      │        │ Austin, TX | Hybrid  │
+│ Mid-Senior Level     │        │ Senior Level         │        │ Junior Level         │
+│                      │        │                      │        │                      │
+│ Skills Required:     │        │ Skills Required:     │        │ Skills Required:     │
+│ • Payroll Cloud      │        │ • Oracle Fusion      │        │ • Fusion Financials  │
+│ • Fast Formulas      │        │ • REST APIs          │        │ • Accounting         │
+│ • HSDL               │        │ • FBDI               │        │ • SQL                │
+│ • Compliance         │        │ • OTBI               │        │ • Communication      │
+│ • Tax Reporting      │        │ • BIP                │        │                      │
+└──────────────────────┘        └──────────────────────┘        └──────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ DATA RELATIONSHIPS                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+User ─(1:1)─> Candidate ─(1:many)─┬─> Skills
+                                   ├─> Certifications
+                                   ├─> Social Links
+                                   ├─> Job Preferences
+                                   └─> Applications (not seeded)
+
+User ─(1:1)─> CompanyUser ─(many:1)─> CompanyAccount
+
+CompanyAccount ─(1:many)─> JobPost
+
+Candidate ─(many:many via Application)─> JobPost
+
+Candidate ─(many:many via Swipe)─> JobPost
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ RECORD COUNTS                                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    User:                       5 records
+    ├── Candidate:              2 records
+    │   ├── Skill:              17 records (8 + 9)
+    │   ├── Certification:      6 records (3 + 3)
+    │   ├── SocialLink:         5 records (3 + 2)
+    │   └── JobPreference:      4 records (2 + 2)
+    │
+    └── CompanyUser:            3 records
+        └── CompanyAccount:     1 record
+            └── JobPost:        6 records
+
+    TOTAL RECORDS:              42
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ DATA FLOW                                                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    Seed Script (seed_data.py)
+         │
+         │ Executes
+         │
+         ▼
+    ┌─────────────────────────────────────┐
+    │      PostgreSQL Database            │
+    │   (moblyze_db on port 5433)         │
+    └─────────────────┬───────────────────┘
+                      │
+                      │ Queries/Updates
+                      │
+                      ▼
+    ┌─────────────────────────────────────┐
+    │      FastAPI Backend                │
+    │   (Running on port 8000)            │
+    │                                     │
+    │   Routers:                          │
+    │   • /candidates                     │
+    │   • /company                        │
+    │   • /jobs                           │
+    │   • /preferences                    │
+    │   • /auth                           │
+    └─────────────────┬───────────────────┘
+                      │
+                      │ REST API
+                      │
+                      ▼
+    ┌─────────────────────────────────────┐
+    │      React Frontend                 │
+    │   (Running on port 3000)            │
+    │                                     │
+    │   Pages:                            │
+    │   • Candidate Dashboard             │
+    │   • Job Listings                    │
+    │   • Job Details                     │
+    │   • Profile Management              │
+    │   • Company Dashboard               │
+    │   • Job Management                  │
+    └─────────────────┬───────────────────┘
+                      │
+                      │ Renders
+                      │
+                      ▼
+    ┌─────────────────────────────────────┐
+    │        User Interface               │
+    │   (Browser - localhost:3000)        │
+    └─────────────────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ MATCHING LOGIC (Conceptual)                                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    Candidate Job Preferences ────────┐
+                                      │
+    Candidate Skills ─────────────────┼───> Matching Algorithm
+                                      │
+    Job Post Requirements ────────────┘
+                                      │
+                                      ▼
+                              Match Score (0-100)
+                                      │
+                                      ▼
+                        Display in Recruiter Dashboard
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ AUTHENTICATION FLOW                                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    1. User enters email/password
+              │
+              ▼
+    2. Backend validates credentials
+              │
+              ▼
+    3. Generate JWT token
+              │
+              ▼
+    4. Return token to frontend
+              │
+              ▼
+    5. Frontend stores token
+              │
+              ▼
+    6. Include token in all API requests
+              │
+              ▼
+    7. Backend validates token
+              │
+              ▼
+    8. Return user-specific data
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              END OF DIAGRAM
+═══════════════════════════════════════════════════════════════════════════════
+```

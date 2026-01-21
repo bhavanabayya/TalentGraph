@@ -550,13 +550,19 @@ class CandidateReadWithPreferences(BaseModel):
     id: int
     user_id: int
     name: str
+    email: Optional[str]
     location: Optional[str]
     profile_picture_path: Optional[str]
     summary: Optional[str]
+    years_experience: Optional[int]
+    rate_min: Optional[float]
+    rate_max: Optional[float]
     work_type: Optional[str]
     availability: Optional[str]
+    status: Optional[str] = None  # For active/inactive status
     created_at: datetime
     updated_at: datetime
+    skills: Optional[List[SkillRead]] = []
     job_preferences: List[CandidateJobPreferenceRead]
     
     class Config:

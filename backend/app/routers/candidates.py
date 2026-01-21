@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
 from ..database import get_session
-from ..models import Candidate, Skill, Certification, Resume, SocialLink, User, Application, JobPost
+from ..models import Candidate, Skill, Certification, Resume, SocialLink, User, Application, JobPost, CandidateJobPreference
 from ..schemas import (
     CandidateCreate,
     CandidateRead,
@@ -22,9 +22,12 @@ from ..schemas import (
     ResumeRead,
     ApplicationListRead,
     MatchScoreDisplay,
+    CandidateReadWithPreferences,
+    CandidateJobPreferenceRead,
 )
 from ..security import get_current_user, get_current_user_email, require_candidate
 from ..matching import calculate_match_score
+from ..recommendation_engine import RecommendationEngine
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 logger = logging.getLogger(__name__)
@@ -124,6 +127,206 @@ def get_candidate(candidate_id: int, session: Session = Depends(get_session)):
             detail="Candidate not found"
         )
     return candidate
+
+
+@router.get("/list/all", response_model=list[CandidateReadWithPreferences])
+def list_all_candidates(
+    session: Session = Depends(get_session)
+):
+    """List all candidates with their job preferences (for company users to browse)."""
+    try:
+        logger.info("[CANDIDATES] GET /list/all called")
+        
+        # Get all candidates
+        candidates = session.exec(select(Candidate)).all()
+        
+        result = []
+        for candidate in candidates:
+            # Get job preferences for this candidate
+            preferences = session.exec(
+                select(CandidateJobPreference).where(
+                    CandidateJobPreference.candidate_id == candidate.id
+                )
+            ).all()
+            
+            # Format preferences
+            preferences_data = []
+            for pref in preferences:
+                preferences_data.append(CandidateJobPreferenceRead(
+                    id=pref.id,
+                    candidate_id=pref.candidate_id,
+                    preference_name=pref.preference_name or "",
+                    product=pref.product or "",
+                    primary_role=pref.primary_role or "",
+                    years_experience=pref.years_experience or 0,
+                    rate_min=pref.rate_min,
+                    rate_max=pref.rate_max,
+                    work_type=pref.work_type or "",
+                    location=pref.location or "",
+                    availability=pref.availability or "",
+                    summary=pref.summary or "",
+                    required_skills=pref.required_skills or "",  # Keep as string (JSON)
+                    is_active=pref.is_active or False,
+                    created_at=pref.created_at,
+                    updated_at=pref.updated_at,
+                ))
+            
+            # Get skills for this candidate
+            skills = session.exec(
+                select(Skill).where(Skill.candidate_id == candidate.id)
+            ).all()
+            
+            skills_data = [
+                SkillRead(
+                    id=skill.id,
+                    name=skill.name,
+                    rating=skill.rating,
+                    level=skill.level,
+                    category=skill.category
+                ) for skill in skills
+            ]
+            
+            # Create candidate with preferences
+            result.append(CandidateReadWithPreferences(
+                id=candidate.id,
+                user_id=candidate.user_id,
+                name=candidate.name or "",
+                email=candidate.email or "",
+                location=candidate.location or "",
+                profile_picture_path=candidate.profile_picture_path,
+                summary=candidate.summary or "",
+                years_experience=candidate.years_experience or 0,
+                rate_min=candidate.rate_min,
+                rate_max=candidate.rate_max,
+                work_type=candidate.work_type or "",
+                availability=candidate.availability or "",
+                status="active",
+                created_at=candidate.created_at,
+                updated_at=candidate.updated_at,
+                skills=skills_data,
+                job_preferences=preferences_data
+            ))
+        
+        logger.info(f"[CANDIDATES] Returning {len(result)} candidates with preferences")
+        return result
+    
+    except Exception as e:
+        logger.error(f"[CANDIDATES] Error in GET /list/all: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch candidates: {str(e)}"
+        )
+
+
+@router.get("/me/recommendations", tags=["candidates"])
+def get_candidate_recommendations(
+    top_n: int = 10,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """
+    Get personalized job recommendations for the current candidate.
+    Uses weighted matching algorithm considering:
+    - Role + Seniority (40%)
+    - Start Date/Availability (25%)
+    - Location (20%)
+    - Salary Range (15%)
+    """
+    try:
+        user_email = current_user.get("email")
+        user_id = current_user.get("user_id")
+        logger.info(f"[CANDIDATES] GET /me/recommendations for user {user_email}")
+        
+        # Get candidate profile
+        candidate = session.exec(
+            select(Candidate).where(Candidate.user_id == user_id)
+        ).first()
+        
+        if not candidate:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Candidate profile not found"
+            )
+        
+        # Get candidate's job preferences
+        preferences = session.exec(
+            select(CandidateJobPreference).where(
+                CandidateJobPreference.candidate_id == candidate.id,
+                CandidateJobPreference.is_active == True
+            )
+        ).all()
+        
+        # Get all active job postings
+        jobs = session.exec(
+            select(JobPost).where(JobPost.status == 'active')
+        ).all()
+        
+        # Prepare candidate data
+        candidate_data = {
+            'id': candidate.id,
+            'name': candidate.name,
+            'primary_role': candidate.primary_role,
+            'location': candidate.location,
+            'availability': candidate.availability,
+            'work_type': candidate.work_type,
+            'rate_min': candidate.rate_min,
+            'rate_max': candidate.rate_max,
+        }
+        
+        # Prepare preferences data
+        preferences_data = []
+        for pref in preferences:
+            preferences_data.append({
+                'id': pref.id,
+                'preference_name': pref.preference_name,
+                'primary_role': pref.primary_role,
+                'location': pref.location,
+                'availability': pref.availability,
+                'work_type': pref.work_type,
+                'rate_min': pref.rate_min,
+                'rate_max': pref.rate_max,
+            })
+        
+        # Prepare jobs data
+        jobs_data = []
+        for job in jobs:
+            jobs_data.append({
+                'id': job.id,
+                'title': job.title,
+                'role': job.role,
+                'seniority': job.seniority,
+                'location': job.location,
+                'work_type': job.work_type,
+                'min_rate': job.min_rate,
+                'max_rate': job.max_rate,
+                'start_date': job.start_date,
+                'description': job.description,
+                'product_author': job.product_author,
+                'product': job.product,
+                'required_skills': job.required_skills,
+            })
+        
+        # Get recommendations
+        recommendations = RecommendationEngine.recommend_jobs_for_candidate(
+            candidate_data, preferences_data, jobs_data, top_n
+        )
+        
+        logger.info(f"[CANDIDATES] Returning {len(recommendations)} job recommendations")
+        return {
+            'candidate_id': candidate.id,
+            'candidate_name': candidate.name,
+            'total_recommendations': len(recommendations),
+            'recommendations': recommendations
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[CANDIDATES] Failed to generate recommendations: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate recommendations: {str(e)}"
+        )
 
 
 @router.get("/me/general-info-status", tags=["candidates"])

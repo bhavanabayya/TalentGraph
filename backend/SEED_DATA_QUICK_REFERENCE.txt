@@ -1,0 +1,307 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              TALENTGRAPH - SEED DATA QUICK REFERENCE (EXPANDED)              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SETUP INSTRUCTIONS                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. Open PowerShell in the backend directory
+2. Run: .\run_seed_data.ps1
+3. Wait for "✅ Seed Data Created Successfully!"
+4. Start the backend: uvicorn app.main:app --reload
+5. Start the frontend: cd ..\react-frontend && npm start
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ CANDIDATE ACCOUNTS (3 Candidates, 3 Job Preferences Each)                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CANDIDATE 1: Sarah Anderson                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Email:          sarah.anderson@email.com                                    │
+│ Password:       kutty_1304                                                  │
+│ Role:           Oracle Fusion Functional Consultant                         │
+│ Experience:     8 years                                                     │
+│ Location:       San Francisco, CA                                           │
+│ Rate:           $125-175/hr                                                 │
+│ Work Type:      Remote                                                      │
+│ Visa:           Citizen                                                     │
+│ Skills:         8 (Oracle Fusion, Financial Mgmt, SCM, SQL, OTBI, etc.)    │
+│ Certifications: 3 (OCI Foundations, Fusion Financials, PMP)                │
+│ Preferences:    1. Oracle Fusion - Senior Finance Role ($140-180/hr)       │
+│                 2. Oracle EBS - Supply Chain Specialist ($130-170/hr)      │
+│                 3. Oracle Fusion - Integration Architect ($150-190/hr)     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CANDIDATE 2: Michael Chen                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Email:          michael.chen@email.com                                      │
+│ Password:       kutty_1304                                                  │
+│ Role:           Oracle HCM Cloud Consultant                                 │
+│ Experience:     6 years                                                     │
+│ Location:       Austin, TX                                                  │
+│ Rate:           $110-150/hr                                                 │
+│ Work Type:      Hybrid                                                      │
+│ Visa:           H1B                                                         │
+│ Skills:         9 (Oracle HCM, Core HR, Talent, Payroll, Fast Formulas)   │
+│ Certifications: 3 (HCM Cloud, Talent Mgmt, SHRM-CP)                        │
+│ Preferences:    1. Oracle HCM - Full Implementation ($120-160/hr)          │
+│                 2. Oracle Fusion - Payroll Specialist ($115-155/hr)        │
+│                 3. Oracle HCM - Talent & Recruitment ($110-150/hr)         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CANDIDATE 3: David Kumar                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Email:          david.kumar@email.com                                       │
+│ Password:       kutty_1304                                                  │
+│ Role:           Oracle Database Administrator                               │
+│ Experience:     10 years                                                    │
+│ Location:       Seattle, WA                                                 │
+│ Rate:           $135-185/hr                                                 │
+│ Work Type:      Hybrid                                                      │
+│ Visa:           Permanent Resident                                          │
+│ Skills:         9 (Oracle DB, RAC, Data Guard, Perf Tuning, PL/SQL, OCI)  │
+│ Certifications: 3 (Oracle 19c DBA, OCI Architect, Performance Tuning)      │
+│ Preferences:    1. Oracle DBA - Senior Position ($145-195/hr)              │
+│                 2. Oracle Cloud DBA ($140-190/hr)                           │
+│                 3. Database Performance Architect ($150-200/hr)             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ COMPANY ACCOUNTS (6 Companies, 3 Users Each = 18 Company Users)             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ COMPANY 1: TechCorp Solutions (San Francisco, CA)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. admin.jennifer@techcorp.com      / kutty_1304     (ADMIN)                │
+│ 2. hr.jane@techcorp.com              / kutty_1304     (HR)                   │
+│ 3. recruiter.robert@techcorp.com     / kutty_1304     (HR)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ COMPANY 2: Global Systems Inc (New York, NY)                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. admin.lisa@globalsystems.com      / kutty_1304     (ADMIN)               │
+│ 2. hr.mark@globalsystems.com         / kutty_1304     (HR)                   │
+│ 3. recruiter.anna@globalsystems.com  / kutty_1304     (HR)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ COMPANY 3: Enterprise Solutions LLC (Chicago, IL)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. admin.susan@enterprisesol.com     / kutty_1304     (ADMIN)               │
+│ 2. hr.tom@enterprisesol.com          / kutty_1304     (HR)                   │
+│ 3. recruiter.diana@enterprisesol.com / kutty_1304     (HR)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ COMPANY 4: Oracle Consulting Partners (Austin, TX)                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. admin.rachel@oraclepartners.com   / kutty_1304     (ADMIN)               │
+│ 2. hr.james@oraclepartners.com       / kutty_1304     (HR)                   │
+│ 3. recruiter.linda@oraclepartners.com / kutty_1304    (HR)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ COMPANY 5: CloudTech Innovations (Seattle, WA)                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. admin.emily@cloudtech.com         / kutty_1304     (ADMIN)               │
+│ 2. hr.chris@cloudtech.com            / kutty_1304     (HR)                   │
+│ 3. recruiter.brian@cloudtech.com     / kutty_1304     (HR)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ COMPANY 6: Digital Transform Group (Boston, MA)                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. admin.kevin@digitaltrans.com      / kutty_1304     (ADMIN)               │
+│ 2. hr.amanda@digitaltrans.com        / kutty_1304     (HR)                   │
+│ 3. recruiter.mike@digitaltrans.com   / kutty_1304     (HR)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ JOB POSTINGS (24 Total - 4 Per Company)                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+══════════════ TECHCORP SOLUTIONS (4 JOBS) ══════════════
+1. Senior Oracle Fusion Financials Consultant
+   Contract | 12 mo | $140-180/hr | San Francisco, CA | Hybrid
+
+2. Oracle HCM Cloud Implementation Lead  
+   Contract | 10 mo | $125-165/hr | San Francisco, CA | Hybrid
+
+3. Oracle Integration Cloud Architect
+   Contract | 8 mo | $150-190/hr | Remote
+
+4. Oracle Database Administrator - Senior
+   Permanent | $140-180k/year | San Francisco, CA | Hybrid
+
+══════════════ GLOBAL SYSTEMS INC (4 JOBS) ══════════════
+5. Oracle EBS Finance Consultant
+   Contract | 9 mo | $120-160/hr | New York, NY | Hybrid
+
+6. Oracle Payroll Cloud Specialist
+   Contract | 6 mo | $115-155/hr | Remote
+
+7. Oracle Fusion SCM Consultant
+   Contract | 12 mo | $135-175/hr | New York, NY | Hybrid
+
+8. Junior Oracle Fusion Analyst
+   Permanent | $70-90k/year | New York, NY | Hybrid
+
+══════════════ ENTERPRISE SOLUTIONS LLC (4 JOBS) ══════════════
+9. Oracle HCM Talent Management Lead
+   Contract | 8 mo | $125-165/hr | Chicago, IL | Hybrid
+
+10. Oracle Fusion Financials Architect
+    Contract | 12 mo | $150-190/hr | Chicago, IL | Hybrid
+
+11. Oracle Database Performance Engineer
+    Contract | 6 mo | $130-170/hr | Remote
+
+12. Oracle EBS Technical Developer
+    Contract | 8 mo | $110-145/hr | Chicago, IL | Hybrid
+
+══════════════ ORACLE CONSULTING PARTNERS (4 JOBS) ══════════════
+13. Oracle Cloud Migration Architect
+    Contract | 18 mo | $160-200/hr | Austin, TX | Hybrid
+
+14. Oracle Fusion HCM Implementation Consultant
+    Contract | 10 mo | $120-160/hr | Austin, TX | Hybrid
+
+15. Oracle Integration Developer
+    Contract | 7 mo | $125-165/hr | Remote
+
+16. Oracle Autonomous Database Specialist
+    Contract | 6 mo | $135-175/hr | Remote
+
+══════════════ CLOUDTECH INNOVATIONS (4 JOBS) ══════════════
+17. Oracle Fusion Financial Reporting Consultant
+    Contract | 6 mo | $115-150/hr | Seattle, WA | Hybrid
+
+18. Oracle HCM Payroll Implementation Lead
+    Contract | 12 mo | $140-180/hr | Seattle, WA | Hybrid
+
+19. Oracle Cloud Infrastructure Engineer
+    Permanent | $130-170k/year | Seattle, WA | Hybrid
+
+20. Oracle Fusion Supply Chain Analyst
+    Contract | 8 mo | $105-140/hr | Remote
+
+══════════════ DIGITAL TRANSFORM GROUP (4 JOBS) ══════════════
+21. Oracle EBS to Cloud Migration Lead
+    Contract | 24 mo | $170-210/hr | Boston, MA | Hybrid
+
+22. Oracle Database Administrator - RAC Specialist
+    Permanent | $145-190k/year | Boston, MA | Hybrid
+
+23. Oracle Fusion PPM Consultant
+    Contract | 9 mo | $125-165/hr | Boston, MA | Hybrid
+
+24. Oracle Analytics Cloud Developer
+    Contract | 6 mo | $110-145/hr | Remote
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ DATABASE RECORD COUNTS                                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    Users:                      21 (3 candidates + 18 company users)
+    ├── Candidates:             3 candidates
+    │   ├── Skills:             26 skills total
+    │   ├── Certifications:     9 certifications total
+    │   ├── SocialLinks:        7 social links total
+    │   └── Job Preferences:    9 preferences (3 per candidate)
+    │
+    └── CompanyUsers:           18 users (3 per company)
+        └── Companies:          6 companies
+            └── JobPosts:       24 job postings (4 per company)
+
+    TOTAL RECORDS:              ~95
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ VERIFICATION COMMANDS                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+# Connect to database (PowerShell)
+docker exec -it postgres_container psql -U moblyze_user -d moblyze_db -h localhost -p 5433
+
+# Check record counts
+SELECT 'Candidates' as table, COUNT(*) FROM candidate;        -- Should be 3
+SELECT 'Job Preferences' as table, COUNT(*) FROM candidatejobpreference; -- Should be 9
+SELECT 'Companies' as table, COUNT(*) FROM companyaccount;    -- Should be 6
+SELECT 'Company Users' as table, COUNT(*) FROM companyuser;   -- Should be 18
+SELECT 'Job Postings' as table, COUNT(*) FROM jobpost;        -- Should be 24
+
+# View all candidates
+SELECT name, primary_role, years_experience FROM candidate;
+
+# View all companies
+SELECT company_name, hq_location FROM companyaccount;
+
+# View job postings by company
+SELECT c.company_name, COUNT(j.id) as job_count
+FROM companyaccount c
+LEFT JOIN jobpost j ON j.company_id = c.id
+GROUP BY c.company_name;
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TESTING SCENARIOS                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+✓ CANDIDATE PORTAL:
+  1. Login as Sarah Anderson
+  2. View complete profile with 8 skills and 3 certifications
+  3. See 3 job preferences (Finance, Supply Chain, Integration)
+  4. Browse all 24 job postings from 6 companies
+  5. Apply for jobs matching your preferences
+  6. Update profile and see changes in database
+
+✓ COMPANY PORTAL:
+  1. Login as admin from any company
+  2. View company's 4 job postings
+  3. See all 3 company users
+  4. Create new job posting
+  5. View candidate applications
+  6. Manage job status
+
+✓ CROSS-COMPANY VISIBILITY:
+  • Each company sees only their own 4 job postings for management
+  • Candidates can see all 24 job postings from all companies
+  • Company users cannot see other companies' internal data
+
+✓ DATA SYNCHRONIZATION:
+  • UI changes → Database: Profile edits save immediately
+  • Database → UI: Direct DB updates reflect after page refresh
+  • Multi-company: Jobs from all companies visible to candidates
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ IMPORTANT NOTES                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+⚠️  SCALE: This seed data includes:
+    • 3 candidates (was 2)
+    • 6 companies (was 1)
+    • 18 company users (was 3)
+    • 24 job postings (was 6)
+    • 9 job preferences (was 4)
+
+⚠️  RUN TIME: Script takes ~10-15 seconds to complete (creates ~95 records)
+
+⚠️  IDEMPOTENT: Safe to run multiple times - clears old seed data first
+
+⚠️  PASSWORDS: All passwords are simple for testing:
+    • Candidates: password123
+    • ADMIN users: admin123
+    • HR users: hr123
+    • Recruiters: recruiter123
+
+⚠️  DATABASE: PostgreSQL must be running on port 5433
+
+⚠️  SYNC: All UI ↔ Database sync is automatic and bidirectional
+
+═══════════════════════════════════════════════════════════════════════════════
+               Ready to test? Run: .\run_seed_data.ps1
+═══════════════════════════════════════════════════════════════════════════════

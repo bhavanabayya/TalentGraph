@@ -1,11 +1,11 @@
 /**
  * Company Dashboard - Interface for recruiters/HR
- * Tabs: Job Postings, Candidate Feed, Shortlist, Rankings
+ * Tabs: Job Management, Browse Candidates, Shortlist, Rankings
  */
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jobsAPI, swipesAPI, jobRolesAPI } from '../api/client';
+import { jobsAPI, jobRolesAPI, candidateAPI, recommendationsAPI } from '../api/client';
 import { useAuth } from '../context/authStore';
 import '../styles/Dashboard.css';
 
@@ -15,7 +15,7 @@ const CompanyDashboard: React.FC = () => {
 
   const [jobs, setJobs] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState('feed');
+  const [activeTab, setActiveTab] = useState('browse');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -41,10 +41,13 @@ const CompanyDashboard: React.FC = () => {
   const [products, setProducts] = useState<string[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
 
-  // Feed state
-  const [feedCandidates, setFeedCandidates] = useState<any[]>([]);
-  const [feedLoading, setFeedLoading] = useState(false);
-  const [currentFeedIndex, setCurrentFeedIndex] = useState(0);
+  // All Candidates (Browse)
+  const [allCandidates, setAllCandidates] = useState<any[]>([]);
+  const [browseCandidatesLoading, setBrowseCandidatesLoading] = useState(false);
+
+  // Recommendations
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
   // Shortlist & Rankings
   const [shortlist, setShortlist] = useState<any[]>([]);
@@ -139,18 +142,31 @@ const CompanyDashboard: React.FC = () => {
     }
   };
 
-  const loadCandidateFeed = async (jobId: number) => {
-    console.log(`[COMPANY-DASHBOARD] Loading candidate feed for job ${jobId}`);
-    setFeedLoading(true);
+  const loadAllCandidates = async () => {
+    console.log('[COMPANY-DASHBOARD] Loading all candidates for browse');
+    setBrowseCandidatesLoading(true);
     try {
-      const response = await swipesAPI.getCandidateFeed(jobId, 0, 10);
-      console.log(`[COMPANY-DASHBOARD] Candidate feed loaded: ${response.data?.candidates?.length || 0} candidates`);
-      setFeedCandidates(response.data?.candidates || []);
-      setCurrentFeedIndex(0);
+      const response = await candidateAPI.listAllCandidates();
+      console.log(`[COMPANY-DASHBOARD] All candidates loaded: ${response.data?.length || 0} candidates`);
+      setAllCandidates(response.data || []);
     } catch (err) {
-      console.error('[COMPANY-DASHBOARD] Failed to load candidate feed:', err);
+      console.error('[COMPANY-DASHBOARD] Failed to load all candidates:', err);
     } finally {
-      setFeedLoading(false);
+      setBrowseCandidatesLoading(false);
+    }
+  };
+
+  const loadRecommendations = async () => {
+    console.log('[COMPANY-DASHBOARD] Loading candidate recommendations');
+    setRecommendationsLoading(true);
+    try {
+      const response = await recommendationsAPI.getAllRecommendations(20);
+      console.log(`[COMPANY-DASHBOARD] Recommendations loaded: ${response.data?.recommendations?.length || 0} candidates`);
+      setRecommendations(response.data?.recommendations || []);
+    } catch (err) {
+      console.error('[COMPANY-DASHBOARD] Failed to load recommendations:', err);
+    } finally {
+      setRecommendationsLoading(false);
     }
   };
 
@@ -234,38 +250,6 @@ const CompanyDashboard: React.FC = () => {
     }
   };
 
-  const handleLikeCandidate = async (candidateId: number) => {
-    if (!selectedJobId) return;
-    try {
-      await swipesAPI.like(selectedJobId, candidateId);
-      // Move to next candidate
-      const nextIndex = currentFeedIndex + 1;
-      if (nextIndex < feedCandidates.length) {
-        setCurrentFeedIndex(nextIndex);
-      } else {
-        alert('End of candidates for this job');
-      }
-    } catch (err) {
-      console.error('Failed to like candidate', err);
-    }
-  };
-
-  const handlePassCandidate = async (candidateId: number) => {
-    if (!selectedJobId) return;
-    try {
-      await swipesAPI.pass(selectedJobId, candidateId);
-      // Move to next candidate
-      const nextIndex = currentFeedIndex + 1;
-      if (nextIndex < feedCandidates.length) {
-        setCurrentFeedIndex(nextIndex);
-      } else {
-        alert('End of candidates for this job');
-      }
-    } catch (err) {
-      console.error('Failed to pass on candidate', err);
-    }
-  };
-
   const loadTeamWorkload = async () => {
     console.log('[COMPANY-DASHBOARD] Loading team workload');
     try {
@@ -298,8 +282,6 @@ const CompanyDashboard: React.FC = () => {
 
   if (loading) return <div className="dashboard-container"><p>Loading...</p></div>;
 
-  const currentCandidate = feedCandidates[currentFeedIndex];
-
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
@@ -319,7 +301,8 @@ const CompanyDashboard: React.FC = () => {
 
       <nav className="dashboard-tabs">
         <button className={`tab ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>📋 Job Management</button>
-        <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => { setActiveTab('feed'); selectedJobId && loadCandidateFeed(selectedJobId); }}>Candidate Feed</button>
+        <button className={`tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); loadAllCandidates(); }}>👥 Browse Candidates</button>
+        <button className={`tab ${activeTab === 'recommendations' ? 'active' : ''}`} onClick={() => { setActiveTab('recommendations'); loadRecommendations(); }}>✨ Recommendations</button>
         <button className={`tab ${activeTab === 'shortlist' ? 'active' : ''}`} onClick={() => { setActiveTab('shortlist'); selectedJobId && loadShortlist(selectedJobId); }}>Shortlist</button>
         <button className={`tab ${activeTab === 'rankings' ? 'active' : ''}`} onClick={() => { setActiveTab('rankings'); selectedJobId && loadRankings(selectedJobId); }}>Rankings</button>
         {(companyRole === 'ADMIN' || companyRole === 'HR') && (
@@ -413,46 +396,378 @@ const CompanyDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Candidate Feed Tab */}
-        {activeTab === 'feed' && (
-          <div className="feed-section">
-            <h2>Candidate Feed</h2>
-            {selectedJobId && jobs.find(j => j.id === selectedJobId) && (
-              <>
-                <p>Job: <strong>{jobs.find(j => j.id === selectedJobId)?.title}</strong></p>
-                {feedLoading && <p>Loading candidates...</p>}
-                {!feedLoading && currentCandidate ? (
-                  <div className="candidate-card">
-                    <div className="candidate-info">
-                      <h3>{currentCandidate.name}</h3>
-                      <p><strong>Location:</strong> {currentCandidate.location}</p>
-                      <p><strong>Experience:</strong> {currentCandidate.years_experience} years</p>
-                      <p><strong>Rate:</strong> ${currentCandidate.rate_min} - ${currentCandidate.rate_max}/hr</p>
-                      <p><strong>Availability:</strong> {currentCandidate.availability}</p>
-                      <p><strong>Work Type:</strong> {currentCandidate.work_type}</p>
-                      {currentCandidate.summary && <p><strong>Summary:</strong> {currentCandidate.summary}</p>}
-                      
-                      <div className="skills-section">
-                        <h4>Skills ({currentCandidate.skills?.length || 0})</h4>
-                        <div className="skills-list">
-                          {currentCandidate.skills?.map((skill: any) => (
-                            <span key={skill.id} className="skill-badge">{skill.name} {skill.level && `(${skill.level})`}</span>
+        {/* Browse Candidates Tab */}
+        {activeTab === 'browse' && (
+          <div className="browse-candidates-section">
+            <h2>👥 Browse All Candidates</h2>
+            {browseCandidatesLoading && <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>Loading candidates...</p>}
+            {!browseCandidatesLoading && allCandidates.length === 0 && (
+              <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>No candidates found</p>
+            )}
+            {!browseCandidatesLoading && allCandidates.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '20px' }}>
+                {allCandidates.map((candidate: any) => (
+                  <div key={candidate.id} style={{
+                    backgroundColor: 'white',
+                    padding: '24px',
+                    borderRadius: '8px',
+                    border: '1px solid #e0e0e0',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                  }}>
+                    {/* Candidate Header */}
+                    <div style={{ marginBottom: '20px', borderBottom: '2px solid #f0f0f0', paddingBottom: '16px' }}>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#1976d2' }}>{candidate.name}</h3>
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '14px', color: '#666' }}>
+                        <span>📧 {candidate.email}</span>
+                        <span>📍 {candidate.location || 'Not specified'}</span>
+                        <span>💼 {candidate.years_experience || 0} years exp</span>
+                        <span>💰 ${candidate.rate_min || 0} - ${candidate.rate_max || 0}/hr</span>
+                      </div>
+                    </div>
+
+                    {/* Candidate Details Grid */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '16px',
+                      marginBottom: '20px'
+                    }}>
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase' }}>Work Type</p>
+                        <p style={{ margin: 0, fontWeight: 600 }}>{candidate.work_type || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase' }}>Availability</p>
+                        <p style={{ margin: 0, fontWeight: 600 }}>{candidate.availability || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase' }}>Status</p>
+                        <p style={{ margin: 0, fontWeight: 600 }}>{candidate.status || 'active'}</p>
+                      </div>
+                    </div>
+
+                    {/* Summary */}
+                    {candidate.summary && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>Summary</p>
+                        <p style={{ margin: 0, color: '#666', lineHeight: 1.6 }}>
+                          {candidate.summary.length > 300 ? `${candidate.summary.substring(0, 300)}...` : candidate.summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Skills */}
+                    {candidate.skills && candidate.skills.length > 0 && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>Skills ({candidate.skills.length})</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {candidate.skills.slice(0, 10).map((skill: any, idx: number) => (
+                            <span key={idx} style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#e3f2fd',
+                              color: '#1976d2',
+                              borderRadius: '4px',
+                              fontSize: '13px'
+                            }}>
+                              {skill.name} {skill.level && `(${skill.level})`}
+                            </span>
+                          ))}
+                          {candidate.skills.length > 10 && (
+                            <span style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#f5f5f5',
+                              color: '#666',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              fontWeight: 600
+                            }}>
+                              +{candidate.skills.length - 10} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Job Preferences Section */}
+                    {candidate.job_preferences && candidate.job_preferences.length > 0 && (
+                      <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '2px solid #f0f0f0' }}>
+                        <h4 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#333' }}>
+                          Job Preferences ({candidate.job_preferences.length})
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          {candidate.job_preferences.map((pref: any, idx: number) => (
+                            <div key={idx} style={{
+                              padding: '16px',
+                              backgroundColor: '#f8f9fa',
+                              borderRadius: '6px',
+                              border: '1px solid #e0e0e0'
+                            }}>
+                              <div style={{ marginBottom: '12px' }}>
+                                <h5 style={{ margin: '0 0 6px 0', fontSize: '16px', color: '#1976d2' }}>
+                                  {pref.preference_name || `Preference ${idx + 1}`}
+                                </h5>
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '14px', color: '#666' }}>
+                                  <span><strong>Product:</strong> {pref.product}</span>
+                                  <span><strong>Role:</strong> {pref.primary_role}</span>
+                                </div>
+                              </div>
+
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                                gap: '12px',
+                                marginBottom: '12px'
+                              }}>
+                                <div>
+                                  <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999' }}>Rate Range</p>
+                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>
+                                    ${pref.rate_min || 0} - ${pref.rate_max || 0}/hr
+                                  </p>
+                                </div>
+                                <div>
+                                  <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999' }}>Work Type</p>
+                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>{pref.work_type || 'Any'}</p>
+                                </div>
+                                <div>
+                                  <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999' }}>Location</p>
+                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>{pref.location || 'Any'}</p>
+                                </div>
+                              </div>
+
+                              {pref.required_skills && (() => {
+                                try {
+                                  const skills = JSON.parse(pref.required_skills);
+                                  return skills.length > 0 && (
+                                    <div>
+                                      <p style={{ margin: '0 0 6px 0', fontSize: '12px', color: '#999' }}>Required Skills</p>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {skills.map((skill: any, skillIdx: number) => (
+                                          <span key={skillIdx} style={{
+                                            padding: '4px 8px',
+                                            backgroundColor: '#e8f5e9',
+                                            color: '#2e7d32',
+                                            borderRadius: '4px',
+                                            fontSize: '12px'
+                                          }}>
+                                            {skill.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                } catch (e) {
+                                  return null;
+                                }
+                              })()}
+                            </div>
                           ))}
                         </div>
                       </div>
-                    </div>
-                    <div className="candidate-actions">
-                      <button className="btn btn-success" onClick={() => handleLikeCandidate(currentCandidate.id)}>👍 Like</button>
-                      <button className="btn btn-danger" onClick={() => handlePassCandidate(currentCandidate.id)}>👎 Pass</button>
-                    </div>
-                    <p className="feed-counter">{currentFeedIndex + 1} / {feedCandidates.length}</p>
+                    )}
                   </div>
-                ) : (
-                  <p>No more candidates for this job</p>
-                )}
-              </>
+                ))}
+              </div>
             )}
-            {!selectedJobId && <p>Please select a job first</p>}
+          </div>
+        )}
+
+        {/* Recommendations Tab */}
+        {activeTab === 'recommendations' && (
+          <div className="recommendations-section">
+            <div style={{ marginBottom: '30px' }}>
+              <h2 style={{ display: 'inline-block', marginRight: '20px' }}>✨ Candidate Recommendations</h2>
+              <button 
+                className="btn btn-primary"
+                onClick={loadRecommendations}
+                disabled={recommendationsLoading}
+                style={{ fontSize: '14px' }}
+              >
+                {recommendationsLoading ? 'Loading...' : '🔄 Refresh Recommendations'}
+              </button>
+            </div>
+            
+            <p style={{ color: '#666', marginBottom: '30px', fontSize: '16px' }}>
+              Our AI matching engine analyzes all your active job postings and finds the best-matched candidates.
+              Matching is based on: <strong>Role & Seniority (40%)</strong>, <strong>Start Date (25%)</strong>, <strong>Location (20%)</strong>, and <strong>Salary (15%)</strong>.
+            </p>
+
+            {recommendationsLoading && (
+              <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>
+                <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
+                <p>Analyzing candidates and calculating match scores...</p>
+              </div>
+            )}
+
+            {!recommendationsLoading && recommendations.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>
+                <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔍</div>
+                <p>No recommendations available. Make sure you have active job postings and candidates in the system.</p>
+              </div>
+            )}
+
+            {!recommendationsLoading && recommendations.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {recommendations.map((rec: any, idx: number) => (
+                  <div key={idx} style={{
+                    backgroundColor: 'white',
+                    padding: '24px',
+                    borderRadius: '8px',
+                    border: `2px solid ${rec.match_score >= 70 ? '#4CAF50' : rec.match_score >= 50 ? '#FF9800' : '#2196F3'}`,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    position: 'relative'
+                  }}>
+                    {/* Match Score Badge */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '16px',
+                      right: '16px',
+                      backgroundColor: rec.match_score >= 70 ? '#4CAF50' : rec.match_score >= 50 ? '#FF9800' : '#2196F3',
+                      color: 'white',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      fontWeight: 'bold',
+                      fontSize: '16px'
+                    }}>
+                      {rec.match_score}% Match
+                    </div>
+
+                    {/* Candidate Header */}
+                    <div style={{ marginBottom: '16px', paddingRight: '120px' }}>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#1976d2' }}>
+                        {rec.candidate.name}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '14px', color: '#666' }}>
+                        <span>📧 {rec.candidate.email}</span>
+                        <span>📍 {rec.candidate.location}</span>
+                        <span>💼 {rec.candidate.years_experience} years exp</span>
+                        <span>💰 ${rec.candidate.rate_min} - ${rec.candidate.rate_max}/hr</span>
+                      </div>
+                    </div>
+
+                    {/* Best Match Job */}
+                    <div style={{
+                      backgroundColor: '#e3f2fd',
+                      padding: '12px 16px',
+                      borderRadius: '6px',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ fontSize: '13px', color: '#1976d2', fontWeight: 500 }}>
+                        🎯 Best Match For: <strong>{rec.best_match_job_title}</strong>
+                      </div>
+                    </div>
+
+                    {/* Match Breakdown */}
+                    <div style={{
+                      backgroundColor: '#f8f9fa',
+                      padding: '16px',
+                      borderRadius: '6px',
+                      marginBottom: '16px'
+                    }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#666', textTransform: 'uppercase' }}>
+                        Match Breakdown
+                      </h4>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                        gap: '12px'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>Role</div>
+                          <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{rec.match_breakdown.role_match}%</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>Availability</div>
+                          <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{rec.match_breakdown.date_match}%</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>Location</div>
+                          <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{rec.match_breakdown.location_match}%</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>Salary</div>
+                          <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{rec.match_breakdown.salary_match}%</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Matched Preference */}
+                    {rec.matched_preference && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <span style={{
+                          backgroundColor: '#e8f5e9',
+                          color: '#2e7d32',
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '13px',
+                          fontWeight: 500
+                        }}>
+                          ✓ Candidate's "{rec.matched_preference}" preference
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Candidate Summary */}
+                    {rec.candidate.summary && (
+                      <p style={{ color: '#666', lineHeight: 1.6, marginBottom: '16px' }}>
+                        {rec.candidate.summary.length > 200 
+                          ? `${rec.candidate.summary.substring(0, 200)}...` 
+                          : rec.candidate.summary}
+                      </p>
+                    )}
+
+                    {/* Skills Preview */}
+                    {rec.candidate.skills && rec.candidate.skills.length > 0 && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: 500 }}>
+                          Top Skills:
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {rec.candidate.skills.slice(0, 5).map((skill: any, skillIdx: number) => (
+                            <span key={skillIdx} style={{
+                              padding: '4px 10px',
+                              backgroundColor: '#e3f2fd',
+                              color: '#1976d2',
+                              borderRadius: '12px',
+                              fontSize: '12px'
+                            }}>
+                              {skill.name} {skill.level && `(${skill.level})`}
+                            </span>
+                          ))}
+                          {rec.candidate.skills.length > 5 && (
+                            <span style={{
+                              padding: '4px 10px',
+                              backgroundColor: '#f5f5f5',
+                              color: '#666',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: 600
+                            }}>
+                              +{rec.candidate.skills.length - 5} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button 
+                        className="btn btn-primary"
+                        style={{ flex: 1 }}
+                      >
+                        View Full Profile
+                      </button>
+                      <button 
+                        className="btn btn-success"
+                        style={{ flex: 1 }}
+                      >
+                        Contact Candidate
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

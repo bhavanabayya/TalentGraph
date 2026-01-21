@@ -4,6 +4,7 @@ import {
   candidateAPI,
   jobRolesAPI,
   preferencesAPI,
+  recommendationsAPI,
   default as apiClient,
 } from '../api/client';
 import { useAuth } from '../context/authStore';
@@ -33,6 +34,7 @@ const CandidateDashboard: React.FC = () => {
   const [applications, setApplications] = useState<any[]>([]);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
@@ -105,6 +107,21 @@ const CandidateDashboard: React.FC = () => {
       console.error('Error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRecommendations = async () => {
+    try {
+      setRecommendationsLoading(true);
+      const response = await recommendationsAPI.getCandidateRecommendations(20);
+      const recommendationsData = response.data?.recommendations || [];
+      setRecommendations(recommendationsData);
+      console.log(`Loaded ${recommendationsData.length} job recommendations`);
+    } catch (err: any) {
+      console.error('Failed to load recommendations:', err);
+      setError(err.response?.data?.detail || 'Failed to load recommendations');
+    } finally {
+      setRecommendationsLoading(false);
     }
   };
 
@@ -307,6 +324,7 @@ const CandidateDashboard: React.FC = () => {
         <button className={`tab ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>Profile Dashboard</button>
         <button className={`tab ${activeTab === 'certifications' ? 'active' : ''}`} onClick={() => setActiveTab('certifications')}>Certifications</button>
         <button className={`tab ${activeTab === 'resumes' ? 'active' : ''}`} onClick={() => setActiveTab('resumes')}>Resumes</button>
+        <button className={`tab ${activeTab === 'recommendations' ? 'active' : ''}`} onClick={() => { setActiveTab('recommendations'); loadRecommendations(); }}>✨ Recommendations</button>
         <button className={`tab ${activeTab === 'applications' ? 'active' : ''}`} onClick={() => setActiveTab('applications')}>Applications</button>
         <button className={`tab ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>Available Jobs</button>
       </nav>
@@ -965,6 +983,170 @@ const CandidateDashboard: React.FC = () => {
                 <p>No resumes uploaded yet</p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Recommendations Tab */}
+        {activeTab === 'recommendations' && (
+          <div className="recommendations-section">
+            <div style={{ marginBottom: '30px' }}>
+              <h2 style={{ display: 'inline-block', marginRight: '20px' }}>✨ Personalized Job Recommendations</h2>
+              <button 
+                className="btn btn-primary"
+                onClick={loadRecommendations}
+                disabled={recommendationsLoading}
+                style={{ fontSize: '14px' }}
+              >
+                {recommendationsLoading ? 'Loading...' : '🔄 Refresh Recommendations'}
+              </button>
+            </div>
+            
+            <p style={{ color: '#666', marginBottom: '30px', fontSize: '16px' }}>
+              Our AI matching engine analyzes your profile, skills, and job preferences to find the best opportunities for you.
+              Matching is based on: <strong>Role & Seniority (40%)</strong>, <strong>Start Date (25%)</strong>, <strong>Location (20%)</strong>, and <strong>Salary (15%)</strong>.
+            </p>
+
+            {recommendationsLoading && (
+              <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>
+                <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
+                <p>Analyzing jobs and calculating match scores...</p>
+              </div>
+            )}
+
+            {!recommendationsLoading && recommendations.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>
+                <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔍</div>
+                <p>No recommendations available yet. Complete your profile and add job preferences to get personalized matches.</p>
+              </div>
+            )}
+
+            {!recommendationsLoading && recommendations.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {recommendations.map((rec: any, idx: number) => (
+                  <div key={idx} style={{
+                    backgroundColor: 'white',
+                    padding: '24px',
+                    borderRadius: '8px',
+                    border: `2px solid ${rec.match_score >= 70 ? '#4CAF50' : rec.match_score >= 50 ? '#FF9800' : '#2196F3'}`,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    position: 'relative'
+                  }}>
+                    {/* Match Score Badge */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '16px',
+                      right: '16px',
+                      backgroundColor: rec.match_score >= 70 ? '#4CAF50' : rec.match_score >= 50 ? '#FF9800' : '#2196F3',
+                      color: 'white',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      fontWeight: 'bold',
+                      fontSize: '16px'
+                    }}>
+                      {rec.match_score}% Match
+                    </div>
+
+                    {/* Job Header */}
+                    <div style={{ marginBottom: '16px', paddingRight: '120px' }}>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#1976d2' }}>
+                        {rec.job.title}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '14px', color: '#666' }}>
+                        <span>🏢 {rec.job.product_author} - {rec.job.product}</span>
+                        <span>📍 {rec.job.location}</span>
+                        <span>💼 {rec.job.seniority}</span>
+                        <span>💰 ${rec.job.min_rate} - ${rec.job.max_rate}/hr</span>
+                      </div>
+                    </div>
+
+                    {/* Match Breakdown */}
+                    <div style={{
+                      backgroundColor: '#f8f9fa',
+                      padding: '16px',
+                      borderRadius: '6px',
+                      marginBottom: '16px'
+                    }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#666', textTransform: 'uppercase' }}>
+                        Match Breakdown
+                      </h4>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                        gap: '12px'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>Role</div>
+                          <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{rec.match_breakdown.role_match}%</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>Availability</div>
+                          <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{rec.match_breakdown.date_match}%</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>Location</div>
+                          <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{rec.match_breakdown.location_match}%</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>Salary</div>
+                          <div style={{ fontWeight: 'bold', color: '#1976d2' }}>{rec.match_breakdown.salary_match}%</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Matched Preference */}
+                    {rec.matched_preference && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <span style={{
+                          backgroundColor: '#e3f2fd',
+                          color: '#1976d2',
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '13px',
+                          fontWeight: 500
+                        }}>
+                          ✓ Matches your "{rec.matched_preference}" preference
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Job Description Preview */}
+                    {rec.job.description && (
+                      <p style={{ color: '#666', lineHeight: 1.6, marginBottom: '16px' }}>
+                        {rec.job.description.length > 200 
+                          ? `${rec.job.description.substring(0, 200)}...` 
+                          : rec.job.description}
+                      </p>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={() => navigate(`/job/${rec.job.id}`)}
+                        style={{ flex: 1 }}
+                      >
+                        View Details
+                      </button>
+                      <button 
+                        className="btn btn-success"
+                        onClick={async () => {
+                          try {
+                            await apiClient.post('/applications', { job_post_id: rec.job.id });
+                            alert('Application submitted successfully!');
+                            fetchAllData();
+                          } catch (err: any) {
+                            alert(err.response?.data?.detail || 'Failed to apply');
+                          }
+                        }}
+                        style={{ flex: 1 }}
+                      >
+                        Apply Now
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

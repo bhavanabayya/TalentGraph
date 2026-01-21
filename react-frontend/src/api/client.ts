@@ -348,6 +348,10 @@ export const candidateAPI = {
       product,
       job_role: role,
     }),
+  
+  // List all candidates with preferences (for company users)
+  listAllCandidates: () =>
+    apiClient.get<CandidateProfile[]>('/candidates/list/all'),
 };
 
 // ============================================================================
@@ -491,6 +495,29 @@ export const swipesAPI = {
 
   getRanking: (jobId: number) =>
     apiClient.get<RankingItem[]>(`/swipes/ranking/${jobId}`),
+};
+
+// ============================================================================
+// RECOMMENDATIONS API
+// ============================================================================
+export const recommendationsAPI = {
+  // Get job recommendations for current candidate
+  getCandidateRecommendations: (topN: number = 10) =>
+    apiClient.get<any>('/candidates/me/recommendations', {
+      params: { top_n: topN }
+    }),
+
+  // Get candidate recommendations for a specific job
+  getJobRecommendations: (jobId: number, topN: number = 10) =>
+    apiClient.get<any>(`/jobs/recommendations/${jobId}`, {
+      params: { top_n: topN }
+    }),
+
+  // Get all candidate recommendations across all company jobs
+  getAllRecommendations: (topN: number = 10) =>
+    apiClient.get<any>('/jobs/recommendations/all', {
+      params: { top_n: topN }
+    }),
 };
 
 export default apiClient;

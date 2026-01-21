@@ -12,6 +12,7 @@ from ..database import get_session
 from ..models import JobPost, CompanyUser
 from ..schemas import JobPostCreate, JobPostRead, JobPostUpdate
 from ..security import get_current_user, require_company_role
+from ..recommendation_engine import RecommendationEngine
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -947,3 +948,273 @@ def recruiter_delete_job(
     logger.info(f"[RECRUITER_DELETE] Job {job_id} deleted successfully")
     
     return {"ok": True, "message": "Job posting deleted"}
+
+
+@router.get("/recommendations/all")
+def get_all_candidate_recommendations(
+    top_n: int = 10,
+    current_user: dict = Depends(require_company_role(["RECRUITER", "HR", "ADMIN"])),
+    session: Session = Depends(get_session)
+):
+    """
+    Get candidate recommendations for all active jobs in the company.
+    Returns aggregated list of best matching candidates.
+    """
+    try:
+        from ..models import Candidate, CandidateJobPreference, Skill
+        
+        company_id = current_user.get("company_id")
+        logger.info(f"[ALL_RECOMMENDATIONS] GET /recommendations/all for company {company_id}")
+        
+        # Get all active jobs for this company
+        jobs = session.exec(
+            select(JobPost).where(
+                JobPost.company_id == company_id,
+                JobPost.status == 'active'
+            )
+        ).all()
+        
+        if not jobs:
+            return {
+                'company_id': company_id,
+                'total_jobs': 0,
+                'total_recommendations': 0,
+                'recommendations': []
+            }
+        
+        # Get all candidates
+        candidates = session.exec(select(Candidate)).all()
+        
+        # Prepare candidates data (same as above)
+        candidates_data = []
+        for candidate in candidates:
+            preferences = session.exec(
+                select(CandidateJobPreference).where(
+                    CandidateJobPreference.candidate_id == candidate.id,
+                    CandidateJobPreference.is_active == True
+                )
+            ).all()
+            
+            skills = session.exec(
+                select(Skill).where(Skill.candidate_id == candidate.id)
+            ).all()
+            
+            preferences_data = [
+                {
+                    'id': pref.id,
+                    'preference_name': pref.preference_name,
+                    'primary_role': pref.primary_role,
+                    'location': pref.location,
+                    'availability': pref.availability,
+                    'work_type': pref.work_type,
+                    'rate_min': pref.rate_min,
+                    'rate_max': pref.rate_max,
+                } for pref in preferences
+            ]
+            
+            skills_data = [
+                {
+                    'id': skill.id,
+                    'name': skill.name,
+                    'level': skill.level,
+                    'rating': skill.rating
+                } for skill in skills
+            ]
+            
+            candidates_data.append({
+                'id': candidate.id,
+                'name': candidate.name,
+                'email': candidate.email,
+                'primary_role': candidate.primary_role,
+                'location': candidate.location,
+                'availability': candidate.availability,
+                'work_type': candidate.work_type,
+                'rate_min': candidate.rate_min,
+                'rate_max': candidate.rate_max,
+                'years_experience': candidate.years_experience,
+                'summary': candidate.summary,
+                'job_preferences': preferences_data,
+                'skills': skills_data
+            })
+        
+        # Aggregate recommendations across all jobs
+        all_matches = {}  # candidate_id -> best match data
+        
+        for job in jobs:
+            job_data = {
+                'id': job.id,
+                'title': job.title,
+                'role': job.role,
+                'seniority': job.seniority,
+                'location': job.location,
+                'work_type': job.work_type,
+                'min_rate': job.min_rate,
+                'max_rate': job.max_rate,
+                'start_date': job.start_date,
+            }
+            
+            job_recommendations = RecommendationEngine.recommend_candidates_for_job(
+                job_data, candidates_data, top_n=50  # Get more for aggregation
+            )
+            
+            for rec in job_recommendations:
+                candidate_id = rec['candidate']['id']
+                if candidate_id not in all_matches or rec['match_score'] > all_matches[candidate_id]['match_score']:
+                    all_matches[candidate_id] = {
+                        'candidate': rec['candidate'],
+                        'best_match_job_id': job.id,
+                        'best_match_job_title': job.title,
+                        'match_score': rec['match_score'],
+                        'match_breakdown': rec['match_breakdown'],
+                        'matched_preference': rec['matched_preference']
+                    }
+        
+        # Sort by match score and take top N
+        final_recommendations = sorted(
+            all_matches.values(),
+            key=lambda x: x['match_score'],
+            reverse=True
+        )[:top_n]
+        
+        logger.info(f"[ALL_RECOMMENDATIONS] Returning {len(final_recommendations)} candidate recommendations")
+        return {
+            'company_id': company_id,
+            'total_jobs': len(jobs),
+            'total_recommendations': len(final_recommendations),
+            'recommendations': final_recommendations
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[ALL_RECOMMENDATIONS] Failed to generate recommendations: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate recommendations: {str(e)}"
+        )
+
+
+@router.get("/recommendations/{job_id}")
+def get_candidate_recommendations_for_job(
+    job_id: int,
+    top_n: int = 10,
+    current_user: dict = Depends(require_company_role(["RECRUITER", "HR", "ADMIN"])),
+    session: Session = Depends(get_session)
+):
+    """
+    Get personalized candidate recommendations for a specific job posting.
+    Uses weighted matching algorithm considering:
+    - Role + Seniority (40%)
+    - Start Date/Availability (25%)
+    - Location (20%)
+    - Salary Range (15%)
+    """
+    try:
+        from ..models import Candidate, CandidateJobPreference, Skill
+        
+        company_id = current_user.get("company_id")
+        logger.info(f"[JOB_RECOMMENDATIONS] GET /recommendations/{job_id} for company {company_id}")
+        
+        # Get job posting
+        job = session.get(JobPost, job_id)
+        if not job or job.company_id != company_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job not found or unauthorized"
+            )
+        
+        # Get all active candidates with their preferences
+        candidates = session.exec(select(Candidate)).all()
+        
+        # Prepare job data
+        job_data = {
+            'id': job.id,
+            'title': job.title,
+            'role': job.role,
+            'seniority': job.seniority,
+            'location': job.location,
+            'work_type': job.work_type,
+            'min_rate': job.min_rate,
+            'max_rate': job.max_rate,
+            'start_date': job.start_date,
+            'description': job.description,
+            'product_author': job.product_author,
+            'product': job.product,
+            'required_skills': job.required_skills,
+        }
+        
+        # Prepare candidates data with preferences
+        candidates_data = []
+        for candidate in candidates:
+            # Get preferences
+            preferences = session.exec(
+                select(CandidateJobPreference).where(
+                    CandidateJobPreference.candidate_id == candidate.id,
+                    CandidateJobPreference.is_active == True
+                )
+            ).all()
+            
+            # Get skills
+            skills = session.exec(
+                select(Skill).where(Skill.candidate_id == candidate.id)
+            ).all()
+            
+            preferences_data = []
+            for pref in preferences:
+                preferences_data.append({
+                    'id': pref.id,
+                    'preference_name': pref.preference_name,
+                    'primary_role': pref.primary_role,
+                    'location': pref.location,
+                    'availability': pref.availability,
+                    'work_type': pref.work_type,
+                    'rate_min': pref.rate_min,
+                    'rate_max': pref.rate_max,
+                })
+            
+            skills_data = [
+                {
+                    'id': skill.id,
+                    'name': skill.name,
+                    'level': skill.level,
+                    'rating': skill.rating
+                } for skill in skills
+            ]
+            
+            candidates_data.append({
+                'id': candidate.id,
+                'name': candidate.name,
+                'email': candidate.email,
+                'primary_role': candidate.primary_role,
+                'location': candidate.location,
+                'availability': candidate.availability,
+                'work_type': candidate.work_type,
+                'rate_min': candidate.rate_min,
+                'rate_max': candidate.rate_max,
+                'years_experience': candidate.years_experience,
+                'summary': candidate.summary,
+                'job_preferences': preferences_data,
+                'skills': skills_data
+            })
+        
+        # Get recommendations
+        recommendations = RecommendationEngine.recommend_candidates_for_job(
+            job_data, candidates_data, top_n
+        )
+        
+        logger.info(f"[JOB_RECOMMENDATIONS] Returning {len(recommendations)} candidate recommendations for job {job_id}")
+        return {
+            'job_id': job.id,
+            'job_title': job.title,
+            'total_recommendations': len(recommendations),
+            'recommendations': recommendations
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[JOB_RECOMMENDATIONS] Failed to generate recommendations: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate recommendations: {str(e)}"
+        )
