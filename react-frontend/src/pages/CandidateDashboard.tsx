@@ -5,7 +5,8 @@ import {
   jobRolesAPI,
   preferencesAPI,
   recommendationsAPI,
-  default as apiClient,
+  matchesAPI,
+  jobsAPI,
 } from '../api/client';
 import { useAuth } from '../context/authStore';
 import { SkillSelector } from '../components/SkillSelector';
@@ -35,6 +36,8 @@ const CandidateDashboard: React.FC = () => {
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [swipingJobId, setSwipingJobId] = useState<number | null>(null);
+  const [pendingAsks, setPendingAsks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
@@ -69,7 +72,7 @@ const CandidateDashboard: React.FC = () => {
       const [profileRes, appsRes, jobsRes, productsRes, jobProfilesRes] = await Promise.all([
         candidateAPI.getMe(),
         candidateAPI.listApplications().catch(() => ({ data: [] })),
-        apiClient.get('/jobs/available').catch(() => ({ data: [] })),
+        jobsAPI.listAll().catch(() => ({ data: [] })),
         jobRolesAPI.getProducts('Oracle').catch(() => ({ data: [] })),
         preferencesAPI.getMyPreferences().catch(() => ({ data: [] })),
       ]);
@@ -122,6 +125,65 @@ const CandidateDashboard: React.FC = () => {
       setError(err.response?.data?.detail || 'Failed to load recommendations');
     } finally {
       setRecommendationsLoading(false);
+    }
+  };
+
+  const loadPendingAsks = async () => {
+    try {
+      const response = await matchesAPI.getPendingAsks();
+      setPendingAsks(response.data?.pending_asks || []);
+      console.log(`Loaded ${response.data?.total || 0} pending asks`);
+    } catch (err: any) {
+      console.error('Failed to load pending asks:', err);
+    }
+  };
+
+  const handleSwipeAction = async (jobId: number, action: 'LIKE' | 'PASS' | 'APPLY') => {
+    try {
+      setSwipingJobId(jobId);
+      await matchesAPI.candidateAction(jobId, action);
+      
+      // Remove from recommendations
+      setRecommendations(prev => prev.filter(rec => rec.job.id !== jobId));
+      
+      // Show success message
+      const actionMessages = {
+        'LIKE': '👍 Job liked!',
+        'PASS': '👎 Job passed',
+        'APPLY': '✅ Application submitted!'
+      };
+      alert(actionMessages[action]);
+      
+      // Refresh data if applied
+      if (action === 'APPLY') {
+        await fetchAllData();
+      }
+    } catch (err: any) {
+      console.error('Failed to perform action:', err);
+      alert(err.response?.data?.detail || `Failed to ${action.toLowerCase()} job`);
+    } finally {
+      setSwipingJobId(null);
+    }
+  };
+
+  const handleRespondToAsk = async (matchStateId: number, response: 'ACCEPT' | 'DECLINE') => {
+    try {
+      await matchesAPI.respondToAsk(matchStateId, response);
+      
+      // Remove from pending asks
+      setPendingAsks(prev => prev.filter(ask => ask.match_state_id !== matchStateId));
+      
+      // Show success message
+      if (response === 'ACCEPT') {
+        alert('✅ Application submitted! You\'ve accepted the recruiter\'s invitation.');
+        await fetchAllData(); // Refresh to show new application
+      } else {
+        alert('Declined recruiter invitation');
+      }
+      
+    } catch (err: any) {
+      console.error('Failed to respond to ask:', err);
+      alert(err.response?.data?.detail || 'Failed to respond');
     }
   };
 
@@ -325,6 +387,9 @@ const CandidateDashboard: React.FC = () => {
         <button className={`tab ${activeTab === 'certifications' ? 'active' : ''}`} onClick={() => setActiveTab('certifications')}>Certifications</button>
         <button className={`tab ${activeTab === 'resumes' ? 'active' : ''}`} onClick={() => setActiveTab('resumes')}>Resumes</button>
         <button className={`tab ${activeTab === 'recommendations' ? 'active' : ''}`} onClick={() => { setActiveTab('recommendations'); loadRecommendations(); }}>✨ Recommendations</button>
+        <button className={`tab ${activeTab === 'asks' ? 'active' : ''}`} onClick={() => { setActiveTab('asks'); loadPendingAsks(); }}>
+          💌 Recruiter Invites {pendingAsks.length > 0 && <span style={{ backgroundColor: '#f44336', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '12px', marginLeft: '6px' }}>{pendingAsks.length}</span>}
+        </button>
         <button className={`tab ${activeTab === 'applications' ? 'active' : ''}`} onClick={() => setActiveTab('applications')}>Applications</button>
         <button className={`tab ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>Available Jobs</button>
       </nav>
@@ -1119,28 +1184,195 @@ const CandidateDashboard: React.FC = () => {
                     )}
 
                     {/* Actions */}
-                    <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      <button 
+                        className="btn"
+                        onClick={() => handleSwipeAction(rec.job.id, 'LIKE')}
+                        disabled={swipingJobId === rec.job.id}
+                        style={{ 
+                          flex: '1 1 auto',
+                          minWidth: '120px',
+                          backgroundColor: '#4CAF50',
+                          color: 'white',
+                          border: 'none',
+                          opacity: swipingJobId === rec.job.id ? 0.6 : 1
+                        }}
+                        title="Like this job to show interest"
+                      >
+                        👍 Like
+                      </button>
+                      <button 
+                        className="btn"
+                        onClick={() => handleSwipeAction(rec.job.id, 'PASS')}
+                        disabled={swipingJobId === rec.job.id}
+                        style={{ 
+                          flex: '1 1 auto',
+                          minWidth: '120px',
+                          backgroundColor: '#f44336',
+                          color: 'white',
+                          border: 'none',
+                          opacity: swipingJobId === rec.job.id ? 0.6 : 1
+                        }}
+                        title="Pass on this job - won't show again"
+                      >
+                        👎 Pass
+                      </button>
                       <button 
                         className="btn btn-primary"
                         onClick={() => navigate(`/job/${rec.job.id}`)}
-                        style={{ flex: 1 }}
+                        style={{ flex: '1 1 auto', minWidth: '120px' }}
                       >
-                        View Details
+                        📄 View Details
                       </button>
                       <button 
                         className="btn btn-success"
-                        onClick={async () => {
-                          try {
-                            await apiClient.post('/applications', { job_post_id: rec.job.id });
-                            alert('Application submitted successfully!');
-                            fetchAllData();
-                          } catch (err: any) {
-                            alert(err.response?.data?.detail || 'Failed to apply');
-                          }
+                        onClick={() => handleSwipeAction(rec.job.id, 'APPLY')}
+                        disabled={swipingJobId === rec.job.id}
+                        style={{ 
+                          flex: '1 1 auto',
+                          minWidth: '120px',
+                          opacity: swipingJobId === rec.job.id ? 0.6 : 1
                         }}
+                        title="Apply now - submits your application"
+                      >
+                        ✅ Apply Now
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recruiter Invites Tab */}
+        {activeTab === 'asks' && (
+          <div className="asks-section">
+            <div style={{ marginBottom: '30px' }}>
+              <h2 style={{ display: 'inline-block', marginRight: '20px' }}>💌 Recruiter Invitations</h2>
+              <button 
+                className="btn btn-primary"
+                onClick={loadPendingAsks}
+                style={{ fontSize: '14px' }}
+              >
+                🔄 Refresh
+              </button>
+            </div>
+            
+            <p style={{ color: '#666', marginBottom: '30px', fontSize: '16px' }}>
+              Recruiters have invited you to apply to these positions. Review the details and decide whether to accept or decline.
+            </p>
+
+            {pendingAsks.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '60px', color: '#999' }}>
+                <div style={{ fontSize: '48px', marginBottom: '20px' }}>📭</div>
+                <p>No pending invitations. When recruiters invite you to apply, they'll appear here.</p>
+              </div>
+            )}
+
+            {pendingAsks.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {pendingAsks.map((ask: any) => (
+                  <div key={ask.match_state_id} style={{
+                    backgroundColor: 'white',
+                    padding: '24px',
+                    borderRadius: '8px',
+                    border: '2px solid #FF9800',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    position: 'relative'
+                  }}>
+                    {/* Match Score Badge */}
+                    {ask.match_score && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '16px',
+                        right: '16px',
+                        backgroundColor: ask.match_score >= 70 ? '#4CAF50' : ask.match_score >= 50 ? '#FF9800' : '#2196F3',
+                        color: 'white',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        fontWeight: 'bold',
+                        fontSize: '16px'
+                      }}>
+                        {ask.match_score}% Match
+                      </div>
+                    )}
+
+                    {/* Job Header */}
+                    <div style={{ marginBottom: '16px', paddingRight: '120px' }}>
+                      <div style={{ 
+                        display: 'inline-block', 
+                        backgroundColor: '#ff5722', 
+                        color: 'white', 
+                        padding: '4px 12px', 
+                        borderRadius: '12px', 
+                        fontSize: '12px', 
+                        fontWeight: 'bold', 
+                        marginBottom: '12px' 
+                      }}>
+                        🎯 RECRUITER INVITATION
+                      </div>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#1976d2' }}>
+                        {ask.job.title}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '14px', color: '#666' }}>
+                        <span>🏢 {ask.job.role}</span>
+                        <span>📍 {ask.job.location}</span>
+                        <span>💼 {ask.job.seniority}</span>
+                        <span>💰 ${ask.job.min_rate} - ${ask.job.max_rate}/hr</span>
+                      </div>
+                    </div>
+
+                    {/* Recruiter Message */}
+                    {ask.message && (
+                      <div style={{
+                        backgroundColor: '#fff3e0',
+                        border: '1px solid #ff9800',
+                        padding: '16px',
+                        borderRadius: '6px',
+                        marginBottom: '16px'
+                      }}>
+                        <div style={{ fontWeight: 'bold', color: '#e65100', marginBottom: '8px', fontSize: '14px' }}>
+                          💬 Message from Recruiter:
+                        </div>
+                        <p style={{ margin: 0, color: '#666', lineHeight: 1.6 }}>
+                          {ask.message}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Timestamp */}
+                    <div style={{ fontSize: '13px', color: '#999', marginBottom: '16px' }}>
+                      Invited: {new Date(ask.asked_at).toLocaleDateString()} at {new Date(ask.asked_at).toLocaleTimeString()}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button 
+                        className="btn btn-success"
+                        onClick={() => handleRespondToAsk(ask.match_state_id, 'ACCEPT')}
                         style={{ flex: 1 }}
                       >
-                        Apply Now
+                        ✅ Accept & Apply
+                      </button>
+                      <button 
+                        className="btn"
+                        onClick={() => handleRespondToAsk(ask.match_state_id, 'DECLINE')}
+                        style={{ 
+                          flex: 1,
+                          backgroundColor: '#f44336',
+                          color: 'white',
+                          border: 'none'
+                        }}
+                      >
+                        ❌ Decline
+                      </button>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={() => navigate(`/job/${ask.job.id}`)}
+                        style={{ flex: 1 }}
+                      >
+                        📄 View Details
                       </button>
                     </div>
                   </div>

@@ -427,6 +427,9 @@ export const jobsAPI = {
   list: () =>
     apiClient.get<JobPost[]>('/jobs/'),
 
+  listAll: () =>
+    apiClient.get<JobPost[]>('/jobs/available'),
+
   get: (jobId: number) =>
     apiClient.get<JobPost>(`/jobs/${jobId}`),
 
@@ -502,22 +505,51 @@ export const swipesAPI = {
 // ============================================================================
 export const recommendationsAPI = {
   // Get job recommendations for current candidate
-  getCandidateRecommendations: (topN: number = 10) =>
+  getCandidateRecommendations: (topN: number = 10, offset: number = 0) =>
     apiClient.get<any>('/candidates/me/recommendations', {
-      params: { top_n: topN }
+      params: { top_n: topN, offset }
     }),
 
   // Get candidate recommendations for a specific job
-  getJobRecommendations: (jobId: number, topN: number = 10) =>
+  getJobRecommendations: (jobId: number, topN: number = 10, offset: number = 0) =>
     apiClient.get<any>(`/jobs/recommendations/${jobId}`, {
-      params: { top_n: topN }
+      params: { top_n: topN, offset }
     }),
 
   // Get all candidate recommendations across all company jobs
-  getAllRecommendations: (topN: number = 10) =>
+  getAllRecommendations: (topN: number = 10, offset: number = 0) =>
     apiClient.get<any>('/jobs/recommendations/all', {
-      params: { top_n: topN }
+      params: { top_n: topN, offset }
     }),
 };
 
-export default apiClient;
+// ============================================================================
+// MATCH STATE API (Swipe Actions)
+// ============================================================================
+export const matchesAPI = {
+  // Candidate actions on a job
+  candidateAction: (jobPostId: number, action: 'LIKE' | 'PASS' | 'APPLY') =>
+    apiClient.post<any>('/matches/candidate/action', null, {
+      params: { job_post_id: jobPostId, action }
+    }),
+
+  // Recruiter actions on a candidate for a job
+  recruiterAction: (candidateId: number, jobPostId: number, action: 'LIKE' | 'PASS' | 'ASK_TO_APPLY', message?: string) =>
+    apiClient.post<any>('/matches/recruiter/action', null, {
+      params: { candidate_id: candidateId, job_post_id: jobPostId, action, message }
+    }),
+
+  // Get pending ask-to-apply requests for candidate
+  getPendingAsks: () =>
+    apiClient.get<any>('/matches/candidate/pending-asks'),
+
+  // Respond to ask-to-apply request
+  respondToAsk: (matchStateId: number, response: 'ACCEPT' | 'DECLINE') =>
+    apiClient.post<any>('/matches/candidate/respond-to-ask', null, {
+      params: { match_state_id: matchStateId, response }
+    }),
+
+  // Get match state for a candidate-job pair
+  getMatchState: (candidateId: number, jobPostId: number) =>
+    apiClient.get<any>(`/matches/state/${candidateId}/${jobPostId}`),
+};

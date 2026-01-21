@@ -369,16 +369,30 @@ class RecommendationEngine:
     @staticmethod
     def recommend_candidates_for_job(job: Dict[str, Any],
                                     candidates: List[Dict[str, Any]],
-                                    top_n: int = 10) -> List[Dict[str, Any]]:
+                                    excluded_candidate_ids: List[int] = None,
+                                    top_n: int = 10,
+                                    offset: int = 0) -> List[Dict[str, Any]]:
         """
         Recommend candidates for a job posting.
+        
+        Args:
+            job: Job posting data dictionary
+            candidates: List of candidate profiles
+            excluded_candidate_ids: List of candidate IDs to exclude (already swiped/rejected)
+            top_n: Number of recommendations to return
+            offset: Pagination offset
         
         Returns:
             List of candidates with match scores, sorted by relevance
         """
+        excluded_candidate_ids = excluded_candidate_ids or []
         recommendations = []
         
         for candidate in candidates:
+            # Skip excluded candidates
+            if candidate.get('id') in excluded_candidate_ids:
+                continue
+            
             # Get candidate's job preferences
             preferences = candidate.get('job_preferences', [])
             
@@ -413,4 +427,8 @@ class RecommendationEngine:
         # Sort by match score descending
         recommendations.sort(key=lambda x: x['match_score'], reverse=True)
         
-        return recommendations[:top_n]
+        # Apply pagination
+        start_idx = offset
+        end_idx = offset + top_n
+        
+        return recommendations[start_idx:end_idx]

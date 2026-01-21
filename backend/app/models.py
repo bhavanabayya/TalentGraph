@@ -290,6 +290,43 @@ class JobRole(SQLModel, table=True):
 
 
 # ============================================================================
+# MATCH STATE TRACKING (Dating App Model)
+# ============================================================================
+
+class MatchState(SQLModel, table=True):
+    """
+    Tracks the interaction state between a candidate and a specific job posting.
+    Similar to dating app swipe mechanics.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidate_id: int = Field(foreign_key="candidate.id", index=True)
+    job_post_id: int = Field(foreign_key="jobpost.id", index=True)
+    
+    # Actions taken by each party
+    candidate_action: str = "NONE"  # NONE, LIKE, PASS, APPLY
+    recruiter_action: str = "NONE"  # NONE, LIKE, PASS, ASK_TO_APPLY
+    
+    # Overall state of the match
+    status: str = "OPEN"  # OPEN, MATCHED, REJECTED, EXPIRED
+    
+    # What information is unlocked for viewing
+    unlock_level: str = "PREVIEW"  # PREVIEW (basic info), PARTIAL (resume + details), FULL (all details)
+    
+    # Match score at time of first interaction
+    initial_match_score: Optional[float] = None  # 0-100
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    candidate_action_at: Optional[datetime] = None
+    recruiter_action_at: Optional[datetime] = None
+    
+    # For ask_to_apply workflow
+    ask_to_apply_message: Optional[str] = None  # Custom message from recruiter
+    ask_to_apply_status: Optional[str] = None  # PENDING, ACCEPTED, DECLINED
+
+
+# ============================================================================
 # APPLICATION TRACKING
 # ============================================================================
 

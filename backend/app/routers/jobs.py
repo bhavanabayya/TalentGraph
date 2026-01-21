@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from ..database import get_session
-from ..models import JobPost, CompanyUser
+from ..models import JobPost, CompanyUser, MatchState
 from ..schemas import JobPostCreate, JobPostRead, JobPostUpdate
 from ..security import get_current_user, require_company_role
 from ..recommendation_engine import RecommendationEngine
@@ -953,15 +953,17 @@ def recruiter_delete_job(
 @router.get("/recommendations/all")
 def get_all_candidate_recommendations(
     top_n: int = 10,
+    offset: int = 0,
     current_user: dict = Depends(require_company_role(["RECRUITER", "HR", "ADMIN"])),
     session: Session = Depends(get_session)
 ):
     """
     Get candidate recommendations for all active jobs in the company.
     Returns aggregated list of best matching candidates.
+    Excludes candidates that have been swiped on or rejected.
     """
     try:
-        from ..models import Candidate, CandidateJobPreference, Skill
+        from ..models import Candidate, CandidateJobPreference, Skill, MatchState
         
         company_id = current_user.get("company_id")
         logger.info(f"[ALL_RECOMMENDATIONS] GET /recommendations/all for company {company_id}")
@@ -1037,6 +1039,25 @@ def get_all_candidate_recommendations(
                 'skills': skills_data
             })
         
+        # Get all match states for this company's jobs to build exclusion list
+        all_job_ids = [job.id for job in jobs]
+        match_states = session.exec(
+            select(MatchState).where(
+                MatchState.job_post_id.in_(all_job_ids)
+            )
+        ).all()
+        
+        # Build per-job exclusion lists
+        job_exclusions = {}  # job_id -> set of excluded candidate IDs
+        for job in jobs:
+            excluded = set()
+            for ms in match_states:
+                if ms.job_post_id == job.id:
+                    # Exclude if recruiter took action OR if rejected
+                    if ms.recruiter_action in ["LIKE", "PASS", "ASK_TO_APPLY"] or ms.status == "REJECTED":
+                        excluded.add(ms.candidate_id)
+            job_exclusions[job.id] = list(excluded)
+        
         # Aggregate recommendations across all jobs
         all_matches = {}  # candidate_id -> best match data
         
@@ -1054,7 +1075,10 @@ def get_all_candidate_recommendations(
             }
             
             job_recommendations = RecommendationEngine.recommend_candidates_for_job(
-                job_data, candidates_data, top_n=50  # Get more for aggregation
+                job_data, candidates_data, 
+                excluded_candidate_ids=job_exclusions.get(job.id, []),
+                top_n=50,  # Get more for aggregation
+                offset=0
             )
             
             for rec in job_recommendations:
@@ -1069,18 +1093,29 @@ def get_all_candidate_recommendations(
                         'matched_preference': rec['matched_preference']
                     }
         
-        # Sort by match score and take top N
-        final_recommendations = sorted(
+        # Sort by match score and apply pagination
+        sorted_recommendations = sorted(
             all_matches.values(),
             key=lambda x: x['match_score'],
             reverse=True
-        )[:top_n]
+        )
+        
+        # Apply pagination
+        start_idx = offset
+        end_idx = offset + top_n
+        final_recommendations = sorted_recommendations[start_idx:end_idx]
+        
+        # Calculate total exclusions
+        total_exclusions = sum(len(excl) for excl in job_exclusions.values())
         
         logger.info(f"[ALL_RECOMMENDATIONS] Returning {len(final_recommendations)} candidate recommendations")
         return {
             'company_id': company_id,
             'total_jobs': len(jobs),
             'total_recommendations': len(final_recommendations),
+            'total_available': len(sorted_recommendations),
+            'offset': offset,
+            'excluded_count': total_exclusions,
             'recommendations': final_recommendations
         }
         
@@ -1098,6 +1133,7 @@ def get_all_candidate_recommendations(
 def get_candidate_recommendations_for_job(
     job_id: int,
     top_n: int = 10,
+    offset: int = 0,
     current_user: dict = Depends(require_company_role(["RECRUITER", "HR", "ADMIN"])),
     session: Session = Depends(get_session)
 ):
@@ -1108,9 +1144,11 @@ def get_candidate_recommendations_for_job(
     - Start Date/Availability (25%)
     - Location (20%)
     - Salary Range (15%)
+    
+    Excludes candidates already swiped on or rejected for this job.
     """
     try:
-        from ..models import Candidate, CandidateJobPreference, Skill
+        from ..models import Candidate, CandidateJobPreference, Skill, MatchState
         
         company_id = current_user.get("company_id")
         logger.info(f"[JOB_RECOMMENDATIONS] GET /recommendations/{job_id} for company {company_id}")
@@ -1122,6 +1160,27 @@ def get_candidate_recommendations_for_job(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Job not found or unauthorized"
             )
+        
+        # Get excluded candidate IDs for this job
+        match_states = session.exec(
+            select(MatchState).where(
+                MatchState.job_post_id == job_id,
+                MatchState.recruiter_action.in_(["LIKE", "PASS", "ASK_TO_APPLY"])
+            )
+        ).all()
+        excluded_candidate_ids = [ms.candidate_id for ms in match_states]
+        
+        # Also exclude rejected matches
+        rejected_states = session.exec(
+            select(MatchState).where(
+                MatchState.job_post_id == job_id,
+                MatchState.status == "REJECTED"
+            )
+        ).all()
+        excluded_candidate_ids.extend([ms.candidate_id for ms in rejected_states])
+        excluded_candidate_ids = list(set(excluded_candidate_ids))  # Remove duplicates
+        
+        logger.info(f"[JOB_RECOMMENDATIONS] Excluding {len(excluded_candidate_ids)} already-swiped candidates")
         
         # Get all active candidates with their preferences
         candidates = session.exec(select(Candidate)).all()
@@ -1199,7 +1258,10 @@ def get_candidate_recommendations_for_job(
         
         # Get recommendations
         recommendations = RecommendationEngine.recommend_candidates_for_job(
-            job_data, candidates_data, top_n
+            job_data, candidates_data, 
+            excluded_candidate_ids=excluded_candidate_ids,
+            top_n=top_n,
+            offset=offset
         )
         
         logger.info(f"[JOB_RECOMMENDATIONS] Returning {len(recommendations)} candidate recommendations for job {job_id}")
@@ -1207,6 +1269,8 @@ def get_candidate_recommendations_for_job(
             'job_id': job.id,
             'job_title': job.title,
             'total_recommendations': len(recommendations),
+            'offset': offset,
+            'excluded_count': len(excluded_candidate_ids),
             'recommendations': recommendations
         }
         

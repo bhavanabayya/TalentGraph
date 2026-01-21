@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jobsAPI, jobRolesAPI, candidateAPI, recommendationsAPI } from '../api/client';
+import { jobsAPI, jobRolesAPI, candidateAPI, recommendationsAPI, matchesAPI } from '../api/client';
 import { useAuth } from '../context/authStore';
 import '../styles/Dashboard.css';
 
@@ -48,6 +48,9 @@ const CompanyDashboard: React.FC = () => {
   // Recommendations
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [swipingCandidateId, setSwipingCandidateId] = useState<number | null>(null);
+  const [askMessage, setAskMessage] = useState<{ [key: number]: string }>({});
+  const [showAskMessageFor, setShowAskMessageFor] = useState<number | null>(null);
 
   // Shortlist & Rankings
   const [shortlist, setShortlist] = useState<any[]>([]);
@@ -170,12 +173,50 @@ const CompanyDashboard: React.FC = () => {
     }
   };
 
+  const handleRecruiterAction = async (candidateId: number, jobId: number, action: 'LIKE' | 'PASS' | 'ASK_TO_APPLY') => {
+    try {
+      setSwipingCandidateId(candidateId);
+      
+      const message = action === 'ASK_TO_APPLY' ? askMessage[candidateId] : undefined;
+      await matchesAPI.recruiterAction(candidateId, jobId, action, message);
+      
+      // Remove from recommendations
+      setRecommendations(prev => prev.filter(rec => rec.candidate.id !== candidateId));
+      
+      // Clear message input
+      if (action === 'ASK_TO_APPLY') {
+        setAskMessage(prev => {
+          const updated = { ...prev };
+          delete updated[candidateId];
+          return updated;
+        });
+        setShowAskMessageFor(null);
+      }
+      
+      // Show success message
+      const actionMessages = {
+        'LIKE': '👍 Candidate liked!',
+        'PASS': '👎 Candidate passed',
+        'ASK_TO_APPLY': '📨 Invitation sent to candidate!'
+      };
+      alert(actionMessages[action]);
+      
+    } catch (err: any) {
+      console.error('Failed to perform action:', err);
+      alert(err.response?.data?.detail || `Failed to ${action.toLowerCase()}`);
+    } finally {
+      setSwipingCandidateId(null);
+    }
+  };
+
   const loadShortlist = async (jobId: number) => {
     console.log(`[COMPANY-DASHBOARD] Loading shortlist for job ${jobId}`);
     try {
-      const response = await swipesAPI.getShortlist(jobId);
-      console.log(`[COMPANY-DASHBOARD] Shortlist loaded: ${(response.data as any)?.candidates?.length || 0} candidates`);
-      setShortlist((response.data as any)?.candidates || []);
+      // TODO: Implement via matchesAPI
+      // const response = await swipesAPI.getShortlist(jobId);
+      // console.log(`[COMPANY-DASHBOARD] Shortlist loaded: ${(response.data as any)?.candidates?.length || 0} candidates`);
+      // setShortlist((response.data as any)?.candidates || []);
+      console.log('[COMPANY-DASHBOARD] Shortlist feature disabled - use recommendations instead');
     } catch (err) {
       console.error('[COMPANY-DASHBOARD] Failed to load shortlist:', err);
     }
@@ -184,9 +225,11 @@ const CompanyDashboard: React.FC = () => {
   const loadRankings = async (jobId: number) => {
     console.log(`[COMPANY-DASHBOARD] Loading rankings for job ${jobId}`);
     try {
-      const response = await swipesAPI.getRanking(jobId);
-      console.log(`[COMPANY-DASHBOARD] Rankings loaded: ${(response.data as any)?.ranked_candidates?.length || 0} candidates`);
-      setRankings((response.data as any)?.ranked_candidates || []);
+      // TODO: Implement via matchesAPI
+      // const response = await swipesAPI.getRanking(jobId);
+      console.log('[COMPANY-DASHBOARD] Rankings feature disabled - use recommendations instead');
+      // console.log(`[COMPANY-DASHBOARD] Rankings loaded: ${(response.data as any)?.ranked_candidates?.length || 0} candidates`);
+      // setRankings((response.data as any)?.ranked_candidates || []);
     } catch (err) {
       console.error('[COMPANY-DASHBOARD] Failed to load rankings:', err);
     }
@@ -750,19 +793,130 @@ const CompanyDashboard: React.FC = () => {
                     )}
 
                     {/* Actions */}
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <button 
-                        className="btn btn-primary"
-                        style={{ flex: 1 }}
-                      >
-                        View Full Profile
-                      </button>
-                      <button 
-                        className="btn btn-success"
-                        style={{ flex: 1 }}
-                      >
-                        Contact Candidate
-                      </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {/* Ask to Apply Section */}
+                      {showAskMessageFor === rec.candidate.id && (
+                        <div style={{
+                          backgroundColor: '#fff3e0',
+                          padding: '16px',
+                          borderRadius: '6px',
+                          border: '1px solid #ff9800'
+                        }}>
+                          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#e65100' }}>
+                            💬 Add a personal message (optional):
+                          </label>
+                          <textarea
+                            value={askMessage[rec.candidate.id] || ''}
+                            onChange={(e) => setAskMessage(prev => ({ ...prev, [rec.candidate.id]: e.target.value }))}
+                            placeholder="E.g., We're impressed by your experience in..."
+                            rows={3}
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              borderRadius: '4px',
+                              border: '1px solid #ddd',
+                              fontSize: '14px',
+                              resize: 'vertical'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <button 
+                          className="btn"
+                          onClick={() => handleRecruiterAction(rec.candidate.id, rec.best_match_job_id, 'LIKE')}
+                          disabled={swipingCandidateId === rec.candidate.id}
+                          style={{ 
+                            flex: '1 1 auto',
+                            minWidth: '110px',
+                            backgroundColor: '#4CAF50',
+                            color: 'white',
+                            border: 'none',
+                            opacity: swipingCandidateId === rec.candidate.id ? 0.6 : 1
+                          }}
+                          title="Like this candidate - shows mutual interest"
+                        >
+                          👍 Like
+                        </button>
+                        <button 
+                          className="btn"
+                          onClick={() => handleRecruiterAction(rec.candidate.id, rec.best_match_job_id, 'PASS')}
+                          disabled={swipingCandidateId === rec.candidate.id}
+                          style={{ 
+                            flex: '1 1 auto',
+                            minWidth: '110px',
+                            backgroundColor: '#f44336',
+                            color: 'white',
+                            border: 'none',
+                            opacity: swipingCandidateId === rec.candidate.id ? 0.6 : 1
+                          }}
+                          title="Pass on this candidate - won't show again"
+                        >
+                          👎 Pass
+                        </button>
+                        {showAskMessageFor === rec.candidate.id ? (
+                          <>
+                            <button 
+                              className="btn"
+                              onClick={() => handleRecruiterAction(rec.candidate.id, rec.best_match_job_id, 'ASK_TO_APPLY')}
+                              disabled={swipingCandidateId === rec.candidate.id}
+                              style={{ 
+                                flex: '1 1 auto',
+                                minWidth: '150px',
+                                backgroundColor: '#FF9800',
+                                color: 'white',
+                                border: 'none',
+                                opacity: swipingCandidateId === rec.candidate.id ? 0.6 : 1
+                              }}
+                            >
+                              📨 Send Invitation
+                            </button>
+                            <button 
+                              className="btn"
+                              onClick={() => {
+                                setShowAskMessageFor(null);
+                                setAskMessage(prev => {
+                                  const updated = { ...prev };
+                                  delete updated[rec.candidate.id];
+                                  return updated;
+                                });
+                              }}
+                              style={{ 
+                                flex: '0 0 auto',
+                                backgroundColor: '#999',
+                                color: 'white',
+                                border: 'none'
+                              }}
+                            >
+                              ✖ Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button 
+                            className="btn"
+                            onClick={() => setShowAskMessageFor(rec.candidate.id)}
+                            style={{ 
+                              flex: '1 1 auto',
+                              minWidth: '150px',
+                              backgroundColor: '#FF9800',
+                              color: 'white',
+                              border: 'none'
+                            }}
+                            title="Invite candidate to apply to this job"
+                          >
+                            📨 Ask to Apply
+                          </button>
+                        )}
+                        <button 
+                          className="btn btn-primary"
+                          onClick={() => navigate(`/candidate/${rec.candidate.id}`)}
+                          style={{ flex: '1 1 auto', minWidth: '150px' }}
+                        >
+                          📄 View Full Profile
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
