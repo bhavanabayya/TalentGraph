@@ -528,28 +528,34 @@ export const recommendationsAPI = {
 // ============================================================================
 export const matchesAPI = {
   // Candidate actions on a job
-  candidateAction: (jobPostId: number, action: 'LIKE' | 'PASS' | 'APPLY') =>
-    apiClient.post<any>('/matches/candidate/action', null, {
-      params: { job_post_id: jobPostId, action }
+  candidateAction: (candidateId: number, jobId: number, action: 'LIKE' | 'PASS' | 'APPLY') =>
+    apiClient.post<any>('/matches/candidate/action', {
+      candidate_id: candidateId,
+      job_id: jobId,
+      action
     }),
 
   // Recruiter actions on a candidate for a job
-  recruiterAction: (candidateId: number, jobPostId: number, action: 'LIKE' | 'PASS' | 'ASK_TO_APPLY', message?: string) =>
-    apiClient.post<any>('/matches/recruiter/action', null, {
-      params: { candidate_id: candidateId, job_post_id: jobPostId, action, message }
+  recruiterAction: (candidateId: number, jobId: number, action: 'LIKE' | 'PASS' | 'ASK_TO_APPLY', message?: string) =>
+    apiClient.post<any>('/matches/recruiter/action', {
+      candidate_id: candidateId,
+      job_id: jobId,
+      action,
+      message
     }),
 
   // Get pending ask-to-apply requests for candidate
-  getPendingAsks: () =>
-    apiClient.get<any>('/matches/candidate/pending-asks'),
+  getPendingAsks: (candidateId: number) =>
+    apiClient.get<any>(`/matches/candidate/pending-asks/${candidateId}`),
 
   // Respond to ask-to-apply request
-  respondToAsk: (matchStateId: number, response: 'ACCEPT' | 'DECLINE') =>
-    apiClient.post<any>('/matches/candidate/respond-to-ask', null, {
-      params: { match_state_id: matchStateId, response }
+  respondToAsk: (matchStateId: number, accept: boolean) =>
+    apiClient.post<any>('/matches/candidate/respond-to-ask', {
+      match_state_id: matchStateId,
+      accept
     }),
 
   // Get match state for a candidate-job pair
-  getMatchState: (candidateId: number, jobPostId: number) =>
-    apiClient.get<any>(`/matches/state/${candidateId}/${jobPostId}`),
+  getMatchState: (candidateId: number, jobId: number) =>
+    apiClient.get<any>(`/matches/state/${candidateId}/${jobId}`),
 };

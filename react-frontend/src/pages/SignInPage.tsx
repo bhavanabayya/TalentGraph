@@ -25,13 +25,13 @@ const SignInPage: React.FC = () => {
     try {
       const response = await authAPI.login({ email, password });
       
-      if (response.data.needs_otp === false && response.data.access_token) {
+      if (response.data.access_token) {
         // Extract company role from token if it's a company user
         const companyRole = response.data.user_type === 'company' 
           ? getCompanyRoleFromToken(response.data.access_token) 
           : null;
         
-        // Direct login without OTP - save token and redirect
+        // Save token and redirect
         login(
           response.data.access_token,
           response.data.user_id,
@@ -62,8 +62,7 @@ const SignInPage: React.FC = () => {
           navigate('/company-dashboard');
         }
       } else {
-        // If needs_otp is true or no access_token, redirect to OTP
-        navigate('/otp-verify');
+        setError('Login failed - no access token received');
       }
     } catch (err: any) {
       console.error('[SIGNIN] Error:', err);

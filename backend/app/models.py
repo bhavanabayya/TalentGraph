@@ -20,15 +20,6 @@ class User(SQLModel, table=True):
     company_user: Optional["CompanyUser"] = Relationship(back_populates="user")
 
 
-class OTPStore(SQLModel, table=True):
-    """OTP storage for multi-factor auth"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(index=True)
-    code: str
-    expires_at: int  # Unix timestamp
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-
 # ============================================================================
 # CANDIDATE SIDE
 # ============================================================================

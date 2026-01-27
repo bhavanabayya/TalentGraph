@@ -32,7 +32,6 @@ const CandidateDashboard: React.FC = () => {
   
   // Profile state
   const [profile, setProfile] = useState<any>(null);
-  const [applications, setApplications] = useState<any[]>([]);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
@@ -69,16 +68,14 @@ const CandidateDashboard: React.FC = () => {
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      const [profileRes, appsRes, jobsRes, productsRes, jobProfilesRes] = await Promise.all([
+      const [profileRes, jobsRes, productsRes, jobProfilesRes] = await Promise.all([
         candidateAPI.getMe(),
-        candidateAPI.listApplications().catch(() => ({ data: [] })),
         jobsAPI.listAll().catch(() => ({ data: [] })),
         jobRolesAPI.getProducts('Oracle').catch(() => ({ data: [] })),
         preferencesAPI.getMyPreferences().catch(() => ({ data: [] })),
       ]);
 
       setProfile(profileRes.data || {});
-      setApplications(Array.isArray(appsRes.data) ? appsRes.data : []);
       
       // Handle job profiles
       const jobProfilesData = Array.isArray(jobProfilesRes?.data) ? jobProfilesRes.data : (jobProfilesRes as any)?.data?.data || [];
@@ -390,7 +387,6 @@ const CandidateDashboard: React.FC = () => {
         <button className={`tab ${activeTab === 'asks' ? 'active' : ''}`} onClick={() => { setActiveTab('asks'); loadPendingAsks(); }}>
           💌 Recruiter Invites {pendingAsks.length > 0 && <span style={{ backgroundColor: '#f44336', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '12px', marginLeft: '6px' }}>{pendingAsks.length}</span>}
         </button>
-        <button className={`tab ${activeTab === 'applications' ? 'active' : ''}`} onClick={() => setActiveTab('applications')}>Applications</button>
         <button className={`tab ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>Available Jobs</button>
       </nav>
 
@@ -1379,88 +1375,6 @@ const CandidateDashboard: React.FC = () => {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Applications Tab */}
-        {activeTab === 'applications' && (
-          <div className="applications-section">
-            <h2>Your Applications</h2>
-            {applications && applications.length > 0 ? (
-              <table className="applications-table">
-                <thead>
-                  <tr>
-                    <th>Job Title</th>
-                    <th>Company</th>
-                    <th>Status</th>
-                    <th>Match Score</th>
-                    <th>Applied</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {applications.map((app: any) => (
-                    <tr key={app.id}>
-                      <td>{app.job_title}</td>
-                      <td>{app.company_name}</td>
-                      <td><span className={`status status-${app.status}`}>{app.status}</span></td>
-                      <td>{app.match_score ? `${app.match_score.toFixed(0)}%` : 'N/A'}</td>
-                      <td>{new Date(app.applied_at).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p>No applications yet</p>
-            )}
-
-            {/* Recommendations Section */}
-            <div style={{ marginTop: '40px' }}>
-              <h3 style={{ fontSize: '20px', marginBottom: '20px' }}>📊 AI Recommendations</h3>
-              <p style={{ color: '#666', marginBottom: '20px' }}>
-                Based on your profile, skills, and preferences, we recommend the following opportunities:
-              </p>
-              {recommendations && recommendations.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                  {recommendations.map((rec: any) => (
-                    <div key={rec.id} style={{
-                      border: '2px solid #4CAF50',
-                      borderRadius: '8px',
-                      padding: '16px',
-                      backgroundColor: '#f1f8f4'
-                    }}>
-                      <h4 style={{ margin: '0 0 8px 0', color: '#2c3e50' }}>{rec.job_title}</h4>
-                      <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '14px' }}>
-                        <strong>{rec.company_name}</strong>
-                      </p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
-                        <span style={{ 
-                          backgroundColor: '#4CAF50', 
-                          color: 'white', 
-                          padding: '4px 8px', 
-                          borderRadius: '4px',
-                          fontSize: '12px'
-                        }}>
-                          {rec.match_score ? `${rec.match_score}% Match` : 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{
-                  backgroundColor: '#f0f7ff',
-                  border: '1px solid #b3d9ff',
-                  borderRadius: '6px',
-                  padding: '16px',
-                  textAlign: 'center',
-                  color: '#0066cc'
-                }}>
-                  <p style={{ margin: 0 }}>
-                    💡 AI recommendations will appear here as they become available. Explore "Available Jobs" to find opportunities!
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
         )}
 

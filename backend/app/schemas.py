@@ -38,30 +38,7 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    needs_otp: bool
     message: str
-    access_token: str | None = None
-    token_type: str | None = None
-    user_id: int | None = None
-    user_type: str | None = None
-
-
-class SendOTPRequest(BaseModel):
-    email: EmailStr
-
-
-class SendOTPResponse(BaseModel):
-    ok: bool
-    message: str
-    expires_in_sec: int
-
-
-class VerifyOTPRequest(BaseModel):
-    email: EmailStr
-    code: str
-
-
-class VerifyOTPResponse(BaseModel):
     access_token: str
     token_type: str
     user_id: int

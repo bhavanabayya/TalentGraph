@@ -24,7 +24,6 @@ def init_db():
     from .models import (
         # Auth
         User,
-        OTPStore,
         # Candidate side
         Skill,
         Certification,

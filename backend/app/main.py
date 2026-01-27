@@ -15,7 +15,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 logger.info("Environment variables loaded")
 
 from .database import init_db
-from .routers import candidates, job_roles, auth, company, jobs, swipes, preferences
+from .routers import candidates, job_roles, auth, company, jobs, swipes, preferences, matches
 
 logger.info("Routers imported successfully")
 
@@ -67,4 +67,5 @@ app.include_router(preferences.router)
 app.include_router(company.router)
 app.include_router(jobs.router)
 app.include_router(swipes.router)
+app.include_router(matches.router)
 app.include_router(job_roles.router)

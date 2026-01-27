@@ -1,0 +1,392 @@
+"""
+Dating-app-style match state management with swipe mechanics.
+Handles Like/Pass/Apply actions from candidates and Like/Pass/Ask-to-Apply from recruiters.
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from typing import List, Optional
+from datetime import datetime, timedelta
+from pydantic import BaseModel
+
+from ..database import get_session
+from ..models import MatchState, Candidate, JobPost, Application
+
+import logging
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/matches", tags=["matches"])
+
+
+# ============================================================================
+# REQUEST/RESPONSE MODELS
+# ============================================================================
+
+class CandidateActionRequest(BaseModel):
+    candidate_id: int
+    job_id: int
+    action: str  # "LIKE", "PASS", "APPLY"
+
+
+class RecruiterActionRequest(BaseModel):
+    candidate_id: int
+    job_id: int
+    action: str  # "LIKE", "PASS", "ASK_TO_APPLY"
+    message: Optional[str] = None  # Optional message for ASK_TO_APPLY
+
+
+class RespondToAskRequest(BaseModel):
+    match_state_id: int
+    accept: bool  # True = accept and apply, False = decline
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def update_unlock_level(match: MatchState) -> str:
+    """
+    Calculate unlock level based on current match state.
+    
+    Rules:
+    - APPLY → FULL (candidate applied)
+    - ASK_TO_APPLY + ACCEPTED → FULL (candidate accepted invitation)
+    - Mutual LIKE (both liked) → PARTIAL
+    - Any PASS → Keep as PREVIEW (rejected)
+    - Otherwise → PREVIEW
+    """
+    # Auto-unlock to FULL if candidate applied
+    if match.candidate_action == "APPLY":
+        return "FULL"
+    
+    # Auto-unlock to FULL if candidate accepted ask-to-apply
+    if match.ask_to_apply_accepted:
+        return "FULL"
+    
+    # Mutual like → PARTIAL unlock
+    if match.candidate_action == "LIKE" and match.recruiter_action == "LIKE":
+        return "PARTIAL"
+    
+    # If either passed, stay at PREVIEW (effectively rejected)
+    if match.candidate_action == "PASS" or match.recruiter_action == "PASS":
+        return "PREVIEW"
+    
+    # Default: PREVIEW
+    return "PREVIEW"
+
+
+def get_or_create_match_state(
+    session: Session,
+    candidate_id: int,
+    job_id: int
+) -> MatchState:
+    """Get existing match state or create new one."""
+    statement = select(MatchState).where(
+        MatchState.candidate_id == candidate_id,
+        MatchState.job_id == job_id
+    )
+    match = session.exec(statement).first()
+    
+    if not match:
+        match = MatchState(
+            candidate_id=candidate_id,
+            job_id=job_id,
+            status="OPEN",
+            unlock_level="PREVIEW"
+        )
+        session.add(match)
+        session.commit()
+        session.refresh(match)
+    
+    return match
+
+
+# ============================================================================
+# CANDIDATE ACTIONS (Like/Pass/Apply)
+# ============================================================================
+
+@router.post("/candidate/action")
+def candidate_action(
+    request: CandidateActionRequest,
+    session: Session = Depends(get_session)
+):
+    """
+    Candidate swipes on a job (LIKE/PASS/APPLY).
+    
+    - LIKE: Express interest
+    - PASS: Not interested (hides from feed)
+    - APPLY: Direct application (auto-unlocks FULL profile)
+    """
+    # Validate action
+    if request.action not in ["LIKE", "PASS", "APPLY"]:
+        raise HTTPException(status_code=400, detail="Invalid action. Must be LIKE, PASS, or APPLY")
+    
+    # Verify candidate exists
+    candidate = session.get(Candidate, request.candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    # Verify job exists
+    job = session.get(JobPost, request.job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Get or create match state
+    match = get_or_create_match_state(session, request.candidate_id, request.job_id)
+    
+    # Update candidate action
+    match.candidate_action = request.action
+    match.candidate_action_at = datetime.utcnow()
+    
+    # If applying, create application record
+    if request.action == "APPLY":
+        # Check if application already exists
+        existing_app = session.exec(
+            select(Application).where(
+                Application.candidate_id == request.candidate_id,
+                Application.job_id == request.job_id
+            )
+        ).first()
+        
+        if not existing_app:
+            application = Application(
+                candidate_id=request.candidate_id,
+                job_id=request.job_id,
+                status="submitted"
+            )
+            session.add(application)
+    
+    # Update status based on actions
+    if request.action == "PASS" or match.recruiter_action == "PASS":
+        match.status = "REJECTED"
+    elif request.action == "LIKE" and match.recruiter_action == "LIKE":
+        match.status = "MATCHED"
+    
+    # Update unlock level
+    match.unlock_level = update_unlock_level(match)
+    
+    session.add(match)
+    session.commit()
+    session.refresh(match)
+    
+    logger.info(f"Candidate {request.candidate_id} {request.action} job {request.job_id}")
+    
+    return match
+
+
+# ============================================================================
+# RECRUITER ACTIONS (Like/Pass/Ask-to-Apply)
+# ============================================================================
+
+@router.post("/recruiter/action")
+def recruiter_action(
+    request: RecruiterActionRequest,
+    session: Session = Depends(get_session)
+):
+    """
+    Recruiter swipes on a candidate (LIKE/PASS/ASK_TO_APPLY).
+    
+    - LIKE: Express interest
+    - PASS: Not interested (hides from feed)
+    - ASK_TO_APPLY: Send invitation to candidate with optional message
+    """
+    # Validate action
+    if request.action not in ["LIKE", "PASS", "ASK_TO_APPLY"]:
+        raise HTTPException(status_code=400, detail="Invalid action. Must be LIKE, PASS, or ASK_TO_APPLY")
+    
+    # Verify candidate exists
+    candidate = session.get(Candidate, request.candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    # Verify job exists
+    job = session.get(JobPost, request.job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Get or create match state
+    match = get_or_create_match_state(session, request.candidate_id, request.job_id)
+    
+    # Update recruiter action
+    match.recruiter_action = request.action
+    match.recruiter_action_at = datetime.utcnow()
+    
+    # Handle ASK_TO_APPLY special case
+    if request.action == "ASK_TO_APPLY":
+        match.ask_to_apply_message = request.message
+        match.ask_to_apply_sent_at = datetime.utcnow()
+        # Set expiry (e.g., 30 days from now)
+        match.ask_to_apply_expires_at = datetime.utcnow() + timedelta(days=30)
+        match.ask_to_apply_accepted = False  # Not accepted yet
+    
+    # Update status based on actions
+    if request.action == "PASS" or match.candidate_action == "PASS":
+        match.status = "REJECTED"
+    elif request.action == "LIKE" and match.candidate_action == "LIKE":
+        match.status = "MATCHED"
+    
+    # Update unlock level
+    match.unlock_level = update_unlock_level(match)
+    
+    session.add(match)
+    session.commit()
+    session.refresh(match)
+    
+    logger.info(f"Recruiter {request.action} candidate {request.candidate_id} for job {request.job_id}")
+    
+    return match
+
+
+# ============================================================================
+# CANDIDATE INBOX (Pending Asks)
+# ============================================================================
+
+@router.get("/candidate/pending-asks/{candidate_id}")
+def get_pending_asks(
+    candidate_id: int,
+    session: Session = Depends(get_session)
+):
+    """
+    Get all pending recruiter invitations (ASK_TO_APPLY) for a candidate.
+    Returns invitations that haven't expired and haven't been responded to.
+    """
+    # Verify candidate exists
+    candidate = session.get(Candidate, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    # Query pending asks
+    now = datetime.utcnow()
+    statement = select(MatchState).where(
+        MatchState.candidate_id == candidate_id,
+        MatchState.recruiter_action == "ASK_TO_APPLY",
+        MatchState.ask_to_apply_accepted == False,
+        MatchState.ask_to_apply_expires_at > now  # Not expired
+    )
+    
+    pending_asks = session.exec(statement).all()
+    
+    # Enrich with job details
+    result = []
+    for match in pending_asks:
+        job = session.get(JobPost, match.job_id)
+        if job:
+            result.append({
+                "match_state_id": match.id,
+                "job": {
+                    "id": job.id,
+                    "title": job.title,
+                    "company_name": job.company.company_name if job.company else "Unknown",
+                    "location": job.location,
+                    "work_type": job.work_type,
+                    "rate_range": f"${job.min_rate}-${job.max_rate}/hr" if job.min_rate else None
+                },
+                "message": match.ask_to_apply_message,
+                "sent_at": match.ask_to_apply_sent_at,
+                "expires_at": match.ask_to_apply_expires_at
+            })
+    
+    logger.info(f"Found {len(result)} pending asks for candidate {candidate_id}")
+    
+    return result
+
+
+# ============================================================================
+# RESPOND TO ASK (Accept/Decline)
+# ============================================================================
+
+@router.post("/candidate/respond-to-ask")
+def respond_to_ask(
+    request: RespondToAskRequest,
+    session: Session = Depends(get_session)
+):
+    """
+    Candidate responds to recruiter invitation (ASK_TO_APPLY).
+    
+    - accept=True: Accept invitation and auto-create application
+    - accept=False: Decline invitation
+    """
+    # Get match state
+    match = session.get(MatchState, request.match_state_id)
+    if not match:
+        raise HTTPException(status_code=404, detail="Match state not found")
+    
+    # Verify it's an ask-to-apply
+    if match.recruiter_action != "ASK_TO_APPLY":
+        raise HTTPException(status_code=400, detail="This is not an ask-to-apply invitation")
+    
+    # Check if already responded
+    if match.ask_to_apply_accepted is not None:
+        raise HTTPException(status_code=400, detail="Already responded to this invitation")
+    
+    # Check if expired
+    if match.ask_to_apply_expires_at and datetime.utcnow() > match.ask_to_apply_expires_at:
+        match.status = "EXPIRED"
+        session.add(match)
+        session.commit()
+        raise HTTPException(status_code=400, detail="This invitation has expired")
+    
+    # Update match state
+    match.ask_to_apply_accepted = request.accept
+    
+    if request.accept:
+        # Auto-set candidate action to APPLY
+        match.candidate_action = "APPLY"
+        match.candidate_action_at = datetime.utcnow()
+        match.status = "MATCHED"
+        
+        # Create application
+        existing_app = session.exec(
+            select(Application).where(
+                Application.candidate_id == match.candidate_id,
+                Application.job_id == match.job_id
+            )
+        ).first()
+        
+        if not existing_app:
+            application = Application(
+                candidate_id=match.candidate_id,
+                job_id=match.job_id,
+                status="submitted"
+            )
+            session.add(application)
+    else:
+        # Declined
+        match.status = "REJECTED"
+    
+    # Update unlock level
+    match.unlock_level = update_unlock_level(match)
+    
+    session.add(match)
+    session.commit()
+    session.refresh(match)
+    
+    action = "accepted" if request.accept else "declined"
+    logger.info(f"Candidate {match.candidate_id} {action} ask-to-apply for job {match.job_id}")
+    
+    return match
+
+
+# ============================================================================
+# QUERY MATCH STATE
+# ============================================================================
+
+@router.get("/state/{candidate_id}/{job_id}")
+def get_match_state(
+    candidate_id: int,
+    job_id: int,
+    session: Session = Depends(get_session)
+):
+    """
+    Get current match state for a specific candidate-job pair.
+    Returns null if no interaction yet.
+    """
+    statement = select(MatchState).where(
+        MatchState.candidate_id == candidate_id,
+        MatchState.job_id == job_id
+    )
+    match = session.exec(statement).first()
+    
+    if not match:
+        return None
+    
+    return match
