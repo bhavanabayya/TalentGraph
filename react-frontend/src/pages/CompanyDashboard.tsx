@@ -368,22 +368,22 @@ const CompanyDashboard: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button className="btn btn-primary" onClick={() => navigate('/recruiter-job-posting')} style={{ fontSize: '14px' }}>
-            📝 Job Posting Portal
+            Job Posting Portal
           </button>
           <button className="btn-logout" onClick={handleLogout}>Logout</button>
         </div>
       </header>
 
       <nav className="dashboard-tabs">
-        <button className={`tab ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>📋 Job Management</button>
-        <button className={`tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); loadAllCandidates(); }}>👥 Browse Candidates</button>
-        <button className={`tab ${activeTab === 'recommendations' ? 'active' : ''}`} onClick={() => { setActiveTab('recommendations'); loadRecommendations(); }}>✨ Recommendations</button>
+        <button className={`tab ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => setActiveTab('jobs')}>Job Management</button>
+        <button className={`tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); loadAllCandidates(); }}>Browse Candidates</button>
+        <button className={`tab ${activeTab === 'recommendations' ? 'active' : ''}`} onClick={() => { setActiveTab('recommendations'); loadRecommendations(); }}>Recommendations</button>
         <button className={`tab ${activeTab === 'shortlist' ? 'active' : ''}`} onClick={() => { setActiveTab('shortlist'); loadShortlist(); }}>
           Shortlist {shortlist.length > 0 && <span style={{ backgroundColor: 'var(--primary-indigo)', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '12px', marginLeft: '6px' }}>{shortlist.length}</span>}
         </button>
         <button className={`tab ${activeTab === 'rankings' ? 'active' : ''}`} onClick={() => { setActiveTab('rankings'); selectedJobId && loadRankings(selectedJobId); }}>Rankings</button>
         {(companyRole === 'ADMIN' || companyRole === 'HR') && (
-          <button className={`tab ${activeTab === 'team' ? 'active' : ''}`} onClick={() => { setActiveTab('team'); loadTeamWorkload(); }}>👥 Team Management</button>
+          <button className={`tab ${activeTab === 'team' ? 'active' : ''}`} onClick={() => { setActiveTab('team'); loadTeamWorkload(); }}>Team Management</button>
         )}
       </nav>
 
@@ -445,7 +445,7 @@ const CompanyDashboard: React.FC = () => {
                         onClick={() => navigate('/recruiter-job-posting', { state: { editJobId: job.id } })}
                         style={{ flex: 1, fontSize: '14px' }}
                       >
-                        ✏️ Edit
+                        Edit
                       </button>
                       <button
                         className="btn btn-small"
@@ -463,7 +463,7 @@ const CompanyDashboard: React.FC = () => {
                           }
                         }}
                       >
-                        🗑️ Delete
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -476,7 +476,7 @@ const CompanyDashboard: React.FC = () => {
         {/* Browse Candidates Tab */}
         {activeTab === 'browse' && (
           <div className="browse-candidates-section">
-            <h2>👥 Browse All Candidates</h2>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--neutral-900)', marginBottom: '1.5rem' }}>Browse All Candidates</h2>
             {browseCandidatesLoading && <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>Loading candidates...</p>}
             {!browseCandidatesLoading && allCandidates.length === 0 && (
               <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>No candidates found</p>
@@ -492,13 +492,37 @@ const CompanyDashboard: React.FC = () => {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
                   }}>
                     {/* Candidate Header */}
-                    <div style={{ marginBottom: '20px', borderBottom: '2px solid #f0f0f0', paddingBottom: '16px' }}>
-                      <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#1976d2' }}>{candidate.name}</h3>
-                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '14px', color: '#666' }}>
-                        <span>📧 {candidate.email}</span>
-                        <span>📍 {candidate.location || 'Not specified'}</span>
-                        <span>💼 {candidate.years_experience || 0} years exp</span>
-                        <span>💰 ${candidate.rate_min || 0} - ${candidate.rate_max || 0}/hr</span>
+                    <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--neutral-200)', paddingBottom: '16px' }}>
+                      <h3 style={{ margin: '0 0 12px 0', fontSize: '1.25rem', fontWeight: 600, color: 'var(--neutral-900)' }}>{candidate.name}</h3>
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--neutral-600)' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                          </svg>
+                          {candidate.email}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                            <circle cx="12" cy="10" r="3"/>
+                          </svg>
+                          {candidate.location || 'Not specified'}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                          </svg>
+                          {candidate.years_experience || 0} years exp
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                          </svg>
+                          ${candidate.rate_min || 0} - ${candidate.rate_max || 0}/hr
+                        </span>
                       </div>
                     </div>
 
@@ -510,24 +534,24 @@ const CompanyDashboard: React.FC = () => {
                       marginBottom: '20px'
                     }}>
                       <div>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase' }}>Work Type</p>
-                        <p style={{ margin: 0, fontWeight: 600 }}>{candidate.work_type || 'Not specified'}</p>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem', color: 'var(--neutral-500)', textTransform: 'uppercase', fontWeight: 600 }}>Work Type</p>
+                        <p style={{ margin: 0, fontWeight: 600, color: 'var(--neutral-900)' }}>{candidate.work_type || 'Not specified'}</p>
                       </div>
                       <div>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase' }}>Availability</p>
-                        <p style={{ margin: 0, fontWeight: 600 }}>{candidate.availability || 'Not specified'}</p>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem', color: 'var(--neutral-500)', textTransform: 'uppercase', fontWeight: 600 }}>Availability</p>
+                        <p style={{ margin: 0, fontWeight: 600, color: 'var(--neutral-900)' }}>{candidate.availability || 'Not specified'}</p>
                       </div>
                       <div>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase' }}>Status</p>
-                        <p style={{ margin: 0, fontWeight: 600 }}>{candidate.status || 'active'}</p>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem', color: 'var(--neutral-500)', textTransform: 'uppercase', fontWeight: 600 }}>Status</p>
+                        <p style={{ margin: 0, fontWeight: 600, color: 'var(--neutral-900)' }}>{candidate.status || 'active'}</p>
                       </div>
                     </div>
 
                     {/* Summary */}
                     {candidate.summary && (
                       <div style={{ marginBottom: '20px' }}>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>Summary</p>
-                        <p style={{ margin: 0, color: '#666', lineHeight: 1.6 }}>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--neutral-900)' }}>Summary</p>
+                        <p style={{ margin: 0, color: 'var(--neutral-600)', lineHeight: 1.6, fontSize: '0.875rem' }}>
                           {candidate.summary.length > 300 ? `${candidate.summary.substring(0, 300)}...` : candidate.summary}
                         </p>
                       </div>
@@ -536,15 +560,17 @@ const CompanyDashboard: React.FC = () => {
                     {/* Skills */}
                     {candidate.skills && candidate.skills.length > 0 && (
                       <div style={{ marginBottom: '20px' }}>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>Skills ({candidate.skills.length})</p>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--neutral-900)' }}>Skills ({candidate.skills.length})</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                           {candidate.skills.slice(0, 10).map((skill: any, idx: number) => (
                             <span key={idx} style={{
                               padding: '6px 12px',
-                              backgroundColor: '#e3f2fd',
-                              color: '#1976d2',
-                              borderRadius: '4px',
-                              fontSize: '13px'
+                              backgroundColor: 'var(--indigo-50)',
+                              color: 'var(--primary-indigo)',
+                              border: '1px solid var(--primary-indigo)',
+                              borderRadius: '6px',
+                              fontSize: '0.8125rem',
+                              fontWeight: 500
                             }}>
                               {skill.name} {skill.level && `(${skill.level})`}
                             </span>
@@ -552,10 +578,11 @@ const CompanyDashboard: React.FC = () => {
                           {candidate.skills.length > 10 && (
                             <span style={{
                               padding: '6px 12px',
-                              backgroundColor: '#f5f5f5',
-                              color: '#666',
-                              borderRadius: '4px',
-                              fontSize: '13px',
+                              backgroundColor: 'var(--neutral-100)',
+                              color: 'var(--neutral-600)',
+                              border: '1px solid var(--neutral-300)',
+                              borderRadius: '6px',
+                              fontSize: '0.8125rem',
                               fontWeight: 600
                             }}>
                               +{candidate.skills.length - 10} more
@@ -567,23 +594,23 @@ const CompanyDashboard: React.FC = () => {
 
                     {/* Job Preferences Section */}
                     {candidate.job_preferences && candidate.job_preferences.length > 0 && (
-                      <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '2px solid #f0f0f0' }}>
-                        <h4 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#333' }}>
+                      <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--neutral-200)' }}>
+                        <h4 style={{ margin: '0 0 16px 0', fontSize: '1.125rem', fontWeight: 600, color: 'var(--neutral-900)' }}>
                           Job Preferences ({candidate.job_preferences.length})
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           {candidate.job_preferences.map((pref: any, idx: number) => (
                             <div key={idx} style={{
                               padding: '16px',
-                              backgroundColor: '#f8f9fa',
-                              borderRadius: '6px',
-                              border: '1px solid #e0e0e0'
+                              backgroundColor: 'var(--neutral-50)',
+                              borderRadius: '8px',
+                              border: '1px solid var(--neutral-200)'
                             }}>
                               <div style={{ marginBottom: '12px' }}>
-                                <h5 style={{ margin: '0 0 6px 0', fontSize: '16px', color: '#1976d2' }}>
+                                <h5 style={{ margin: '0 0 6px 0', fontSize: '1rem', fontWeight: 600, color: 'var(--primary-indigo)' }}>
                                   {pref.preference_name || `Preference ${idx + 1}`}
                                 </h5>
-                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '14px', color: '#666' }}>
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--neutral-600)' }}>
                                   <span><strong>Product:</strong> {pref.product}</span>
                                   <span><strong>Role:</strong> {pref.primary_role}</span>
                                 </div>
@@ -596,18 +623,18 @@ const CompanyDashboard: React.FC = () => {
                                 marginBottom: '12px'
                               }}>
                                 <div>
-                                  <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999' }}>Rate Range</p>
-                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>
+                                  <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem', color: 'var(--neutral-500)', fontWeight: 600 }}>Rate Range</p>
+                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-900)' }}>
                                     ${pref.rate_min || 0} - ${pref.rate_max || 0}/hr
                                   </p>
                                 </div>
                                 <div>
-                                  <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999' }}>Work Type</p>
-                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>{pref.work_type || 'Any'}</p>
+                                  <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem', color: 'var(--neutral-500)', fontWeight: 600 }}>Work Type</p>
+                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-900)' }}>{pref.work_type || 'Any'}</p>
                                 </div>
                                 <div>
-                                  <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999' }}>Location</p>
-                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>{pref.location || 'Any'}</p>
+                                  <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem', color: 'var(--neutral-500)', fontWeight: 600 }}>Location</p>
+                                  <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem', color: 'var(--neutral-900)' }}>{pref.location || 'Any'}</p>
                                 </div>
                               </div>
 
@@ -616,15 +643,17 @@ const CompanyDashboard: React.FC = () => {
                                   const skills = JSON.parse(pref.required_skills);
                                   return skills.length > 0 && (
                                     <div>
-                                      <p style={{ margin: '0 0 6px 0', fontSize: '12px', color: '#999' }}>Required Skills</p>
+                                      <p style={{ margin: '0 0 6px 0', fontSize: '0.75rem', color: 'var(--neutral-500)', fontWeight: 600 }}>Required Skills</p>
                                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                         {skills.map((skill: any, skillIdx: number) => (
                                           <span key={skillIdx} style={{
                                             padding: '4px 8px',
-                                            backgroundColor: '#e8f5e9',
-                                            color: '#2e7d32',
-                                            borderRadius: '4px',
-                                            fontSize: '12px'
+                                            backgroundColor: 'var(--success-green)',
+                                            color: 'white',
+                                            border: '1px solid var(--success-green)',
+                                            borderRadius: '6px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 500
                                           }}>
                                             {skill.name}
                                           </span>
@@ -650,125 +679,105 @@ const CompanyDashboard: React.FC = () => {
 
         {/* Recommendations Tab - Redirect to Job-Specific Candidate Swipe */}
         {activeTab === 'recommendations' && (
-          <div className="recommendations-section">
+          <div className="enterprise-section">
             <div style={{
               textAlign: 'center',
-              padding: '60px 40px',
+              padding: '4rem 2rem',
               backgroundColor: 'white',
               borderRadius: '12px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-              maxWidth: '900px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              maxWidth: '1000px',
               margin: '0 auto'
             }}>
               {/* Icon */}
-              <div style={{
-                fontSize: '80px',
-                marginBottom: '30px',
-                lineHeight: 1
-              }}>
-                🎯
+              <div style={{ marginBottom: '2rem' }}>
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--primary-indigo)" strokeWidth="1.5" style={{ margin: '0 auto' }}>
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
               </div>
 
               {/* Title */}
               <h2 style={{
-                fontSize: '32px',
-                marginBottom: '20px',
-                color: '#1976d2',
-                fontWeight: 600
+                fontSize: '1.875rem',
+                marginBottom: '1rem',
+                color: 'var(--neutral-900)',
+                fontWeight: 700,
+                letterSpacing: '-0.02em'
               }}>
-                Find Perfect Candidates
+                Discover AI-Matched Candidates
               </h2>
 
               {/* Description */}
               <p style={{
-                fontSize: '18px',
-                color: '#666',
-                marginBottom: '50px',
+                fontSize: '1rem',
+                color: 'var(--neutral-600)',
+                marginBottom: '3rem',
                 lineHeight: 1.6,
                 maxWidth: '600px',
-                margin: '0 auto 50px'
+                margin: '0 auto 3rem'
               }}>
-                Select a job role below to start swiping through AI-matched candidates matched to your requirements.
+                Select a job posting below to start reviewing candidates matched to your requirements.
               </p>
 
               {/* Job Selection - Cards Grid */}
               {jobs.filter(j => j.status === 'active').length === 0 ? (
-                <div style={{
-                  padding: '60px 40px',
-                  backgroundColor: '#fff3e0',
-                  borderRadius: '12px',
-                  maxWidth: '500px',
-                  margin: '0 auto'
-                }}>
-                  <div style={{ fontSize: '64px', marginBottom: '20px' }}>📝</div>
-                  <h3 style={{ fontSize: '24px', marginBottom: '12px', color: '#333' }}>No Active Jobs</h3>
-                  <p style={{ color: '#666', fontSize: '16px', marginBottom: '30px', lineHeight: 1.6 }}>
-                    Create a job posting first to start matching with talented candidates.
+                <div className="enterprise-empty-state" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-400)" strokeWidth="1.5" style={{ marginBottom: '1rem' }}>
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                  </svg>
+                  <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 600, color: 'var(--neutral-700)' }}>
+                    No Active Job Postings
+                  </h3>
+                  <p style={{ color: 'var(--neutral-600)', fontSize: '0.9375rem', marginBottom: '2rem', lineHeight: 1.6 }}>
+                    Create a job posting to start discovering qualified candidates.
                   </p>
                   <button
+                    className="enterprise-btn enterprise-btn--primary"
                     onClick={() => setActiveTab('jobs')}
-                    style={{
-                      backgroundColor: '#1976d2',
-                      color: 'white',
-                      border: 'none',
-                      padding: '14px 32px',
-                      fontSize: '16px',
-                      fontWeight: 600,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s',
-                      boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#1565c0';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#1976d2';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
                   >
-                    Create Job Posting →
+                    Create Job Posting
                   </button>
                 </div>
               ) : (
                 <>
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                    gap: '24px',
-                    marginBottom: '40px',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                    gap: '1.5rem',
+                    marginBottom: '3rem',
                     textAlign: 'left'
                   }}>
                     {jobs.filter(j => j.status === 'active').map(job => (
                       <div
                         key={job.id}
                         onClick={() => navigate(`/company-dashboard/job/${job.id}/candidates`)}
+                        className="enterprise-card"
                         style={{
-                          padding: '24px',
-                          backgroundColor: 'white',
-                          border: '2px solid #e5e7eb',
-                          borderRadius: '12px',
+                          padding: '1.5rem',
                           cursor: 'pointer',
-                          transition: 'all 0.3s',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                          transition: 'all 0.2s',
+                          border: '1px solid var(--neutral-200)'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = '#1976d2';
-                          e.currentTarget.style.transform = 'translateY(-4px)';
-                          e.currentTarget.style.boxShadow = '0 8px 20px rgba(25, 118, 210, 0.15)';
+                          e.currentTarget.style.borderColor = 'var(--primary-indigo)';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.15)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = '#e5e7eb';
+                          e.currentTarget.style.borderColor = 'var(--neutral-200)';
                           e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
                         }}
                       >
                         <h3 style={{
-                          fontSize: '18px',
+                          fontSize: '1.125rem',
                           fontWeight: 700,
-                          color: '#111827',
-                          marginBottom: '12px',
+                          color: 'var(--neutral-900)',
+                          marginBottom: '1rem',
                           lineHeight: 1.3
                         }}>
                           {job.title}
@@ -777,50 +786,84 @@ const CompanyDashboard: React.FC = () => {
                         <div style={{
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '8px',
-                          marginBottom: '16px',
-                          fontSize: '14px',
-                          color: '#6b7280'
+                          gap: '0.625rem',
+                          marginBottom: '1.25rem',
+                          fontSize: '0.875rem'
                         }}>
-                          <div>
-                            <span style={{ fontWeight: 600, color: '#8b5cf6' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-indigo)' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                            </svg>
+                            <span style={{ fontWeight: 600 }}>
                               {job.product_author}
                             </span>
-                            {job.product && <span> • {job.product}</span>}
+                            {job.product && <span style={{ color: 'var(--neutral-600)' }}>• {job.product}</span>}
                           </div>
                           {job.role && (
-                            <div style={{ color: '#4b5563' }}>
-                              Role: <strong>{job.role}</strong>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--neutral-700)' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                              </svg>
+                              {job.role}
                             </div>
                           )}
                           {job.location && (
-                            <div>📍 {job.location}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--neutral-600)' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                              </svg>
+                              {job.location}
+                            </div>
                           )}
                           {job.seniority && (
-                            <div>⭐ {job.seniority}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--neutral-600)' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                              </svg>
+                              {job.seniority}
+                            </div>
                           )}
                         </div>
 
                         <div style={{
-                          paddingTop: '16px',
-                          borderTop: '1px solid #f3f4f6',
+                          paddingTop: '1rem',
+                          borderTop: '1px solid var(--neutral-200)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between'
                         }}>
                           <span style={{
-                            fontSize: '13px',
-                            color: '#22c55e',
-                            fontWeight: 600
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.375rem',
+                            fontSize: '0.8125rem',
+                            color: 'var(--success-green)',
+                            fontWeight: 600,
+                            padding: '0.25rem 0.75rem',
+                            backgroundColor: 'var(--success-green-light)',
+                            borderRadius: '9999px'
                           }}>
-                            ✓ Active
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="12" cy="12" r="10"/>
+                            </svg>
+                            Active
                           </span>
                           <span style={{
-                            fontSize: '14px',
-                            color: '#1976d2',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.375rem',
+                            fontSize: '0.875rem',
+                            color: 'var(--primary-indigo)',
                             fontWeight: 600
                           }}>
-                            View Candidates →
+                            View Candidates
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="5" y1="12" x2="19" y2="12"/>
+                              <polyline points="12 5 19 12 12 19"/>
+                            </svg>
                           </span>
                         </div>
                       </div>
@@ -831,21 +874,32 @@ const CompanyDashboard: React.FC = () => {
                   <div style={{
                     display: 'flex',
                     justifyContent: 'center',
-                    gap: '40px',
-                    marginTop: '50px',
-                    flexWrap: 'wrap'
+                    gap: '3rem',
+                    marginTop: '3rem',
+                    flexWrap: 'wrap',
+                    paddingTop: '2rem',
+                    borderTop: '1px solid var(--neutral-200)'
                   }}>
-                    <div style={{ textAlign: 'center', maxWidth: '180px' }}>
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>👆</div>
-                      <div style={{ fontSize: '14px', color: '#888' }}>Swipe or use keyboard</div>
+                    <div style={{ textAlign: 'center', maxWidth: '200px' }}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-400)" strokeWidth="1.5" style={{ margin: '0 auto 0.5rem' }}>
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                      </svg>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--neutral-600)', fontWeight: 500 }}>Swipe or use keyboard</div>
                     </div>
-                    <div style={{ textAlign: 'center', maxWidth: '180px' }}>
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>🤖</div>
-                      <div style={{ fontSize: '14px', color: '#888' }}>AI-matched candidates</div>
+                    <div style={{ textAlign: 'center', maxWidth: '200px' }}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-400)" strokeWidth="1.5" style={{ margin: '0 auto 0.5rem' }}>
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 16v-4"/>
+                        <path d="M12 8h.01"/>
+                      </svg>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--neutral-600)', fontWeight: 500 }}>AI-matched candidates</div>
                     </div>
-                    <div style={{ textAlign: 'center', maxWidth: '180px' }}>
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚡</div>
-                      <div style={{ fontSize: '14px', color: '#888' }}>Quick screening</div>
+                    <div style={{ textAlign: 'center', maxWidth: '200px' }}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-400)" strokeWidth="1.5" style={{ margin: '0 auto 0.5rem' }}>
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                      </svg>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--neutral-600)', fontWeight: 500 }}>Quick screening</div>
                     </div>
                   </div>
                 </>
@@ -1337,8 +1391,8 @@ const CompanyDashboard: React.FC = () => {
                       >
                         {skill.name}
                         {skill.rating && (
-                          <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-                            {'⭐'.repeat(skill.rating)}
+                          <span style={{ fontSize: '0.75rem', opacity: 0.8, marginLeft: '4px' }}>
+                            ({skill.rating}/5)
                           </span>
                         )}
                       </span>
