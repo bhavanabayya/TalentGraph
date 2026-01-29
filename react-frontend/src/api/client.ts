@@ -558,4 +558,12 @@ export const matchesAPI = {
   // Get match state for a candidate-job pair
   getMatchState: (candidateId: number, jobId: number) =>
     apiClient.get<any>(`/matches/state/${candidateId}/${jobId}`),
+
+  // Get recruiter's shortlist (liked candidates)
+  getRecruiterShortlist: (companyId: number) =>
+    apiClient.get<any>(`/matches/recruiter/shortlist/${companyId}`),
+
+  // Get candidate's liked jobs
+  getCandidateLikes: (candidateId: number) =>
+    apiClient.get<any>(`/matches/candidate/likes/${candidateId}`),
 };

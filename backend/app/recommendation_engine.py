@@ -59,26 +59,50 @@ class RecommendationEngine:
         """
         Calculate role similarity including seniority matching.
         Returns score between 0 and 1.
+        
+        Weight Distribution:
+        - Role name match: 70%
+        - Seniority level match: 30%
         """
         if not candidate_role or not job_role:
             return 0.0
         
-        # Role name matching (70% of role score)
         candidate_role_lower = candidate_role.lower()
         job_role_lower = job_role.lower()
+        
+        # Role name matching (70% of role score)
+        # Extract key role terms (ignore seniority words)
+        seniority_words = {'junior', 'mid', 'senior', 'lead', 'principal', 'staff', 'architect', 'entry', 'associate'}
+        
+        candidate_role_words = set(w for w in candidate_role_lower.split() if w not in seniority_words and len(w) > 2)
+        job_role_words = set(w for w in job_role_lower.split() if w not in seniority_words and len(w) > 2)
         
         # Exact match
         if candidate_role_lower == job_role_lower:
             role_match = 1.0
-        # Partial match (contains key terms)
-        elif any(word in job_role_lower for word in candidate_role_lower.split() if len(word) > 3):
-            role_match = 0.7
-        elif any(word in candidate_role_lower for word in job_role_lower.split() if len(word) > 3):
-            role_match = 0.7
+        # Check for common role keywords
+        elif candidate_role_words and job_role_words:
+            common_words = candidate_role_words.intersection(job_role_words)
+            union_words = candidate_role_words.union(job_role_words)
+            
+            if len(common_words) >= 2:  # Multiple matching keywords
+                role_match = 0.9
+            elif len(common_words) == 1:  # One matching keyword
+                role_match = 0.7
+            elif any(word in job_role_lower for word in candidate_role_words):
+                role_match = 0.6
+            else:
+                role_match = 0.2
         else:
             role_match = 0.0
         
         # Seniority matching (30% of role score)
+        # Extract seniority from role names if not explicitly provided
+        if not candidate_seniority:
+            candidate_seniority = candidate_role
+        if not job_seniority:
+            job_seniority = job_role
+            
         candidate_level = RecommendationEngine.normalize_seniority(candidate_seniority)
         job_level = RecommendationEngine.normalize_seniority(job_seniority)
         
@@ -317,7 +341,42 @@ class RecommendationEngine:
             'overall_score': round(overall_score * 100, 1)
         }
         
-        return overall_score, feature_scores
+        # Generate match reasons for UI display
+        match_reasons = RecommendationEngine._generate_match_reasons(
+            role_score, date_score, location_score, salary_score,
+            candidate_role, job_role, candidate_location, job_location,
+            candidate_work_type, job_work_type
+        )
+        
+        return overall_score, feature_scores, match_reasons
+    
+    @staticmethod
+    def _generate_match_reasons(role_score, date_score, location_score, salary_score,
+                               candidate_role, job_role, candidate_location, job_location,
+                               candidate_work_type, job_work_type) -> List[str]:
+        """Generate human-readable match reasons"""
+        reasons = []
+        
+        if role_score >= 0.8:
+            reasons.append(f"Excellent role match: {candidate_role} → {job_role}")
+        elif role_score >= 0.6:
+            reasons.append(f"Good role fit: {candidate_role} aligns with {job_role}")
+        
+        if date_score >= 0.8:
+            reasons.append("Availability aligns perfectly with start date")
+        elif date_score >= 0.6:
+            reasons.append("Availability matches job timeline")
+        
+        if location_score >= 0.8:
+            if 'remote' in (candidate_work_type or '').lower() or 'remote' in (job_work_type or '').lower():
+                reasons.append("Remote work - location flexible")
+            else:
+                reasons.append(f"Great location match: {candidate_location}")
+        
+        if salary_score >= 0.7:
+            reasons.append("Salary expectations align well")
+        
+        return reasons[:3]  # Top 3 reasons
     
     @staticmethod
     def recommend_jobs_for_candidate(candidate: Dict[str, Any], 
@@ -337,19 +396,21 @@ class RecommendationEngine:
             best_score = 0
             best_breakdown = {}
             best_preference = None
+            best_reasons = []
             
             if job_preferences:
                 for preference in job_preferences:
-                    score, breakdown = RecommendationEngine.calculate_match_score(
+                    score, breakdown, reasons = RecommendationEngine.calculate_match_score(
                         candidate, job, preference
                     )
                     if score > best_score:
                         best_score = score
                         best_breakdown = breakdown
                         best_preference = preference
+                        best_reasons = reasons
             else:
                 # Use candidate profile directly
-                best_score, best_breakdown = RecommendationEngine.calculate_match_score(
+                best_score, best_breakdown, best_reasons = RecommendationEngine.calculate_match_score(
                     candidate, job
                 )
             
@@ -358,6 +419,7 @@ class RecommendationEngine:
                     'job': job,
                     'match_score': round(best_score * 100, 1),
                     'match_breakdown': best_breakdown,
+                    'match_reasons': best_reasons,
                     'matched_preference': best_preference.get('preference_name') if best_preference else None
                 })
         
@@ -400,19 +462,21 @@ class RecommendationEngine:
             best_score = 0
             best_breakdown = {}
             best_preference = None
+            best_reasons = []
             
             if preferences:
                 for preference in preferences:
-                    score, breakdown = RecommendationEngine.calculate_match_score(
+                    score, breakdown, reasons = RecommendationEngine.calculate_match_score(
                         candidate, job, preference
                     )
                     if score > best_score:
                         best_score = score
                         best_breakdown = breakdown
                         best_preference = preference
+                        best_reasons = reasons
             else:
                 # Use candidate profile directly
-                best_score, best_breakdown = RecommendationEngine.calculate_match_score(
+                best_score, best_breakdown, best_reasons = RecommendationEngine.calculate_match_score(
                     candidate, job
                 )
             
@@ -421,6 +485,7 @@ class RecommendationEngine:
                     'candidate': candidate,
                     'match_score': round(best_score * 100, 1),
                     'match_breakdown': best_breakdown,
+                    'match_reasons': best_reasons,
                     'matched_preference': best_preference.get('preference_name') if best_preference else None
                 })
         

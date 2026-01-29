@@ -20,6 +20,10 @@ import RecruiterJobPostingPage from './pages/RecruiterJobPostingPage.tsx';
 import JobPreferencesPage from './pages/JobPreferencesPage.tsx';
 import ProfileDashboard from './pages/ProfileDashboard.tsx';
 import JobDetailPage from './pages/JobDetailPage.tsx';
+import JobDiscoveryPage from './pages/JobDiscoveryPage.tsx';
+import RequestsInboxPage from './pages/RequestsInboxPage.tsx';
+import JobCandidateRecommendationsPage from './pages/JobCandidateRecommendationsPage.tsx';
+import SentRequestsPage from './pages/SentRequestsPage.tsx';
 
 import './App.css';
 
@@ -133,6 +137,36 @@ const App: React.FC = () => {
           }
         />
 
+        <Route
+          path="/candidate-dashboard/discover"
+          element={
+            <ProtectedRoute
+              element={<JobDiscoveryPage />}
+              requiredUserType="candidate"
+            />
+          }
+        />
+
+        <Route
+          path="/candidate-dashboard/invitations"
+          element={
+            <ProtectedRoute
+              element={<RequestsInboxPage />}
+              requiredUserType="candidate"
+            />
+          }
+        />
+
+        <Route
+          path="/candidate-dashboard/job/:jobId"
+          element={
+            <ProtectedRoute
+              element={<JobDetailPage />}
+              requiredUserType="candidate"
+            />
+          }
+        />
+
         {/* Protected company routes */}
         <Route
           path="/company-dashboard"
@@ -156,6 +190,36 @@ const App: React.FC = () => {
 
         <Route
           path="/job/:jobId"
+          element={
+            <ProtectedRoute
+              element={<JobDetailPage />}
+              requiredUserType="company"
+            />
+          }
+        />
+
+        <Route
+          path="/company-dashboard/job/:jobId/candidates"
+          element={
+            <ProtectedRoute
+              element={<JobCandidateRecommendationsPage />}
+              requiredUserType="company"
+            />
+          }
+        />
+
+        <Route
+          path="/company-dashboard/sent-requests"
+          element={
+            <ProtectedRoute
+              element={<SentRequestsPage />}
+              requiredUserType="company"
+            />
+          }
+        />
+
+        <Route
+          path="/company-dashboard/candidate/:candidateId"
           element={
             <ProtectedRoute
               element={<JobDetailPage />}

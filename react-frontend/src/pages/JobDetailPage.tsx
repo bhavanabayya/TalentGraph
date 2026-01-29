@@ -12,7 +12,7 @@ import '../styles/Dashboard.css';
 const JobDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { jobId } = useParams<{ jobId: string }>();
-  const { logout } = useAuth();
+  const { logout, userType } = useAuth();
 
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -281,22 +281,26 @@ const JobDetailPage: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
-                <button 
-                  className="btn btn-primary" 
-                  onClick={() => setIsEditing(true)}
-                >
-                  Edit Job
-                </button>
-                <button 
-                  className="btn btn-danger" 
-                  onClick={handleDelete}
-                  disabled={saving}
-                >
-                  Delete Job
-                </button>
+                {userType === 'company' && (
+                  <>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => setIsEditing(true)}
+                    >
+                      Edit Job
+                    </button>
+                    <button 
+                      className="btn btn-danger" 
+                      onClick={handleDelete}
+                      disabled={saving}
+                    >
+                      Delete Job
+                    </button>
+                  </>
+                )}
                 <button 
                   className="btn btn-secondary" 
-                  onClick={() => navigate('/company-dashboard')}
+                  onClick={() => navigate(userType === 'company' ? '/company-dashboard' : '/candidate-dashboard')}
                 >
                   Back to Dashboard
                 </button>

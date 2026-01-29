@@ -30,12 +30,15 @@ def init_db():
         Resume,
         Candidate,
         CandidateJobPreference,
+        SocialLink,
         # Company side
         CompanyAccount,
         CompanyUser,
         JobPost,
         Swipe,
         Application,
+        # Match system
+        MatchState,
         # Ontology
         ProductAuthor,
         Product,

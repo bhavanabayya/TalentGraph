@@ -315,6 +315,9 @@ class MatchState(SQLModel, table=True):
     # For ask_to_apply workflow
     ask_to_apply_message: Optional[str] = None  # Custom message from recruiter
     ask_to_apply_status: Optional[str] = None  # PENDING, ACCEPTED, DECLINED
+    ask_to_apply_sent_at: Optional[datetime] = None  # When recruiter sent invitation
+    ask_to_apply_expires_at: Optional[datetime] = None  # Expiration date for invitation
+    ask_to_apply_accepted: bool = False  # Whether candidate accepted the invitation
 
 
 # ============================================================================
