@@ -98,9 +98,7 @@ del moblyze_poc.db
 
 ### Authentication
 - `POST /auth/signup` - Create account
-- `POST /auth/login` - Login with password
-- `POST /auth/send-otp` - Send OTP to email
-- `POST /auth/verify-otp` - Verify OTP and get JWT
+- `POST /auth/login` - Login with password (returns JWT)
 
 ### Candidates
 - `GET /candidates/me` - Get current candidate profile
@@ -130,9 +128,9 @@ del moblyze_poc.db
 - `GET /swipes/ranking/{job_id}` - Get ranking
 
 ### Ontology
-- `GET /job-roles/` - List all product authors
-- `GET /job-roles/{author}` - Get products for author
-- `GET /job-roles/{author}/{product}` - Get roles for product
+- `GET /job-roles/authors` - List all product authors
+- `GET /job-roles/products?author={author}` - Get products for author
+- `GET /job-roles/roles?author={author}&product={product}` - Get roles for product
 
 ---
 
@@ -142,7 +140,7 @@ del moblyze_poc.db
 2. Use the interactive Swagger UI to test endpoints
 3. For authenticated endpoints:
    - Click "Authorize" button
-   - Paste your JWT token (after calling /auth/verify-otp)
+   - Paste your JWT token (after calling /auth/login)
    - Start with "Bearer " prefix
 
 ---
