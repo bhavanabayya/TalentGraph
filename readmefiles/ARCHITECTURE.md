@@ -15,10 +15,10 @@ This is a POC for an enterprise hiring "dating app" connecting candidates with j
 
 ### Technology Stack
 
-- **Backend**: FastAPI + SQLModel (SQLAlchemy ORM) + SQLite
+- **Backend**: FastAPI + SQLModel (SQLAlchemy ORM) + PostgreSQL (default via `DATABASE_URL`)
 - **Frontend**: React + TypeScript + React Router
 - **Authentication**: JWT + OTP-based MFA (6-digit codes)
-- **Database**: SQLite with 13 core tables
+- **Database**: PostgreSQL by default, SQLite optional for local development
 
 ### Database Schema
 

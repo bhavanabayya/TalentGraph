@@ -11,7 +11,13 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, Depends, status, Header
 
 # Configuration
-JWT_SECRET = os.getenv("APP_JWT_SECRET", "dev-secret-key-change-in-production")
+APP_ENV = os.getenv("APP_ENV", "development").lower()
+JWT_SECRET = os.getenv("APP_JWT_SECRET")
+if not JWT_SECRET:
+    if APP_ENV == "development":
+        JWT_SECRET = "dev-secret-key-change-in-production"
+    else:
+        raise RuntimeError("APP_JWT_SECRET must be set in non-development environments")
 JWT_ALGORITHM = "HS256"
 JWT_EXP_HOURS = int(os.getenv("APP_JWT_EXP_HOURS", "24"))
 

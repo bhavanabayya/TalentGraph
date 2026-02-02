@@ -8,7 +8,7 @@ A dating-app-style platform connecting enterprise talent with job opportunities,
 - **Dual-sided marketplace**: Candidates build profiles; Companies post jobs
 - **Dating-style UI**: Swipe like/pass on candidates for jobs
 - **AI Matching (Phase 2)**: Deterministic scoring based on skills, products, location, rate, availability
-- **Multi-factor Authentication**: OTP-based email verification
+- **Authentication**: JWT-based login (OTP not implemented in current backend)
 - **Role-based Access Control**: HR, ADMIN, RECRUITER, TEAM_LEAD permissions
 - **Real-time Feedback Loop**: Track likes, passes, interviews, hires for Phase 3 learning
 
@@ -66,7 +66,7 @@ TalentGraph/
 │   │   ├── main.py       # FastAPI app setup
 │   │   ├── database.py   # SQLModel session
 │   │   └── routers/
-│   │       ├── auth.py       # signup, login, send-otp, verify-otp
+│   │       ├── auth.py       # signup, login
 │   │       ├── candidates.py # candidate profile CRUD
 │   │       ├── company.py    # company account + employees
 │   │       ├── jobs.py       # job posting CRUD
@@ -100,11 +100,9 @@ TalentGraph/
    ↓
 2. Login (email, password)
    ↓
-3. Send OTP (6-digit code via email)
+3. Receive JWT token
    ↓
-4. Verify OTP (get JWT token)
-   ↓
-5. Access Protected Resources (as candidate or company)
+4. Access Protected Resources (as candidate or company)
 ```
 
 **JWT Claims:**
@@ -139,9 +137,7 @@ TalentGraph/
 ### Authentication
 ```
 POST   /auth/signup        Create account (email, password, user_type)
-POST   /auth/login         Validate password → needs_otp: true
-POST   /auth/send-otp      Email 6-digit OTP code
-POST   /auth/verify-otp    Verify code → get JWT token
+POST   /auth/login         Validate password → returns JWT token
 ```
 
 ### Candidates
