@@ -83,3 +83,8 @@ tmp/
 temp/
 .cache/
 commands.txt
+
+# =========================
+# readme files
+# =========================
+readme/

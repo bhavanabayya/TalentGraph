@@ -1,6 +1,39 @@
 """
 Authentication endpoints: signup, login.
-"""
+
+1. for logging
+ - records useful logs (signup/login events)
+ 
+2. fastapi pieces:
+ - APIRouter → defines a grouped set of routes
+ - HTTPException → throws proper API errors
+ - Depends → dependency injection (DB session)
+ - status → standard HTTP status codes
+
+3. sqlmodel.Session, select → DB session + query builder
+ - get_session → function that provides DB session per request
+
+4. Models:
+
+ - User → main auth identity table
+ - Candidate → candidate profile table (linked to user)
+ - CompanyAccount → company entity table
+ - CompanyUser → employee inside a company (linked to user + company)
+
+5.Schemas:
+
+ - SignUpRequest → what signup expects in JSON
+ - LoginRequest → what login expects
+ - LoginResponse → what login returns
+
+6. Security:
+
+ - hash_password() → converts raw password to stored hash
+ - verify_password() → checks raw password vs stored hash
+ - create_access_token() → generates JWT
+
+
+ """
 
 import logging
 from datetime import timedelta
@@ -14,11 +47,11 @@ from ..schemas import SignUpRequest, LoginRequest, LoginResponse
 from ..security import hash_password, verify_password, create_access_token
 
 logger = logging.getLogger(__name__)
+# All endpoints start with /auth
 router = APIRouter(prefix="/auth", tags=["auth"])
-
 logger.info("Auth router initialized")
 
-
+#creates a new user for candidate or the company 
 @router.post("/signup", response_model=dict)
 def signup(req: SignUpRequest, session: Session = Depends(get_session)):
     """
@@ -116,7 +149,7 @@ def signup(req: SignUpRequest, session: Session = Depends(get_session)):
         "user_type": new_user.user_type
     }
 
-
+#verifies the credentials and returns a jwt token
 @router.post("/login", response_model=LoginResponse)
 def login(req: LoginRequest, session: Session = Depends(get_session)):
     """
@@ -126,7 +159,7 @@ def login(req: LoginRequest, session: Session = Depends(get_session)):
     email_lower = req.email.lower()
     logger.info(f"[LOGIN] Login attempt for: {email_lower}")
     
-    # Find user
+    # Find user from the database 
     user = session.exec(select(User).where(User.email == email_lower)).first()
     if not user:
         raise HTTPException(
@@ -174,7 +207,7 @@ def login(req: LoginRequest, session: Session = Depends(get_session)):
         message=f"Login successful!"
     )
 
-
+#simple test endpoint to verify the auth router is working
 @router.get("/test")
 def test_auth():
     """Simple test endpoint"""
