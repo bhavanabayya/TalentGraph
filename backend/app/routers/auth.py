@@ -5,32 +5,32 @@ Authentication endpoints: signup, login.
  - records useful logs (signup/login events)
  
 2. fastapi pieces:
- - APIRouter → defines a grouped set of routes
- - HTTPException → throws proper API errors
- - Depends → dependency injection (DB session)
- - status → standard HTTP status codes
+ - APIRouter - defines a grouped set of routes
+ - HTTPException - throws proper API errors
+ - Depends - dependency injection (DB session)
+ - status - standard HTTP status codes
 
-3. sqlmodel.Session, select → DB session + query builder
- - get_session → function that provides DB session per request
+3. sqlmodel.Session, select - DB session + query builder
+ - get_session - function that provides DB session per request
 
 4. Models:
 
- - User → main auth identity table
- - Candidate → candidate profile table (linked to user)
- - CompanyAccount → company entity table
- - CompanyUser → employee inside a company (linked to user + company)
+ - User - main auth identity table
+ - Candidate - candidate profile table (linked to user)
+ - CompanyAccount - company entity table
+ - CompanyUser - employee inside a company (linked to user + company)
 
 5.Schemas:
 
- - SignUpRequest → what signup expects in JSON
- - LoginRequest → what login expects
- - LoginResponse → what login returns
+ - SignUpRequest - what signup expects in JSON
+ - LoginRequest - what login expects
+ - LoginResponse - what login returns
 
 6. Security:
 
- - hash_password() → converts raw password to stored hash
- - verify_password() → checks raw password vs stored hash
- - create_access_token() → generates JWT
+ - hash_password() - converts raw password to stored hash
+ - verify_password() - checks raw password vs stored hash
+ - create_access_token() - generates JWT
 
 
  """
