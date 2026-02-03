@@ -79,9 +79,23 @@ def signup(req: SignUpRequest, session: Session = Depends(get_session)):
             detail="Invalid user_type. Must be 'candidate' or 'company'"
         )
     
+    # Validate company role before committing user to avoid orphaned accounts
+    if req.user_type == "company":
+        if not req.company_role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="company_role required for company users"
+            )
+
+        if req.company_role not in ["ADMIN", "HR", "RECRUITER"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="company_role must be ADMIN, HR, or RECRUITER"
+            )
+
     # Hash password
     password_hash = hash_password(req.password)
-    
+
     # Create user
     new_user = User(
         email=email_lower,
@@ -91,9 +105,9 @@ def signup(req: SignUpRequest, session: Session = Depends(get_session)):
     session.add(new_user)
     session.commit()
     session.refresh(new_user)
-    
+
     logger.info(f"[SIGNUP] Created User ID {new_user.id} for {email_lower}")
-    
+
     # Create candidate profile
     if req.user_type == "candidate":
         candidate = Candidate(
@@ -108,18 +122,6 @@ def signup(req: SignUpRequest, session: Session = Depends(get_session)):
     
     # Create company profile
     elif req.user_type == "company":
-        if not req.company_role:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="company_role required for company users"
-            )
-        
-        if req.company_role not in ["ADMIN", "HR", "RECRUITER"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="company_role must be ADMIN, HR, or RECRUITER"
-            )
-        
         # Create company account
         company_account = CompanyAccount(
             company_name="",
