@@ -7,6 +7,8 @@ const ProfileDashboard: React.FC = () => {
   const [profile, setProfile] = useState<CandidateProfileWithPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +29,26 @@ const ProfileDashboard: React.FC = () => {
     }
   };
 
+  const handleDeletePreference = async (preferenceId: number) => {
+    try {
+      await preferencesAPI.delete(preferenceId);
+      setSuccessMessage('Profile deleted successfully');
+      setDeleteConfirm(null);
+      await fetchProfile();
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete profile');
+    }
+  };
+
+  const handleEditPreference = (preferenceId: number) => {
+    navigate(`/job-preferences?edit=${preferenceId}`);
+  };
+
+  const handleCreateNew = () => {
+    navigate('/job-preferences?new=true');
+  };
+
   if (loading) {
     return <div className="profile-dashboard loading">Loading your profile...</div>;
   }
@@ -44,69 +66,30 @@ const ProfileDashboard: React.FC = () => {
 
   return (
     <div className="profile-dashboard">
-      {/* Profile Header */}
-      <div className="profile-header">
-        <div className="profile-info">
-          <div className="profile-avatar">
-            {profile.profile_picture_path ? (
-              <img src={profile.profile_picture_path} alt={profile.name} />
-            ) : (
-              <div className="avatar-placeholder">{profile.name.charAt(0)}</div>
-            )}
-          </div>
-          <div className="profile-details">
-            <h1>{profile.name}</h1>
-            {profile.location && <p className="location">📍 {profile.location}</p>}
-            {profile.summary && <p className="summary">{profile.summary}</p>}
-            <div className="profile-meta">
-              {profile.work_type && <span className="meta-tag">💼 {profile.work_type}</span>}
-              {profile.availability && <span className="meta-tag">⏰ {profile.availability}</span>}
-            </div>
-          </div>
-        </div>
-        <button
-          className="btn-manage-prefs"
-          onClick={() => navigate('/job-preferences')}
-        >
-          Manage Preferences
-        </button>
-      </div>
-
+      {successMessage && <div className="success-message">{successMessage}</div>}
       {error && <div className="error-message">{error}</div>}
-
-      {/* Preferences Overview */}
-      <div className="preferences-overview">
-        <div className="overview-card">
-          <h3>Total Profiles</h3>
-          <div className="overview-number">{totalPreferences}</div>
-        </div>
-        <div className="overview-card">
-          <h3>Active Profiles</h3>
-          <div className="overview-number">{activePreferences.length}</div>
-        </div>
-      </div>
 
       {/* Preferences Section */}
       <div className="preferences-section">
         <div className="section-header">
-          <h2>Your Job Preference Profiles</h2>
+          <h2>Your Job Profiles ({totalPreferences})</h2>
           <button
             className="btn-primary"
-            onClick={() => navigate('/job-preferences')}
+            onClick={handleCreateNew}
           >
-            + New Preference
+            + New Profile
           </button>
         </div>
 
         {totalPreferences === 0 ? (
           <div className="empty-state">
-            <h3>No job preferences yet</h3>
-            <p>Create job preference profiles to match with opportunities tailored to your interests.</p>
+            <h3>No profiles yet</h3>
+            <p>Create your first profile to start matching with opportunities.</p>
             <button
               className="btn-primary-large"
-              onClick={() => navigate('/job-preferences')}
+              onClick={handleCreateNew}
             >
-              Create Your First Preference
+              Create Your First Profile
             </button>
           </div>
         ) : (
@@ -115,164 +98,84 @@ const ProfileDashboard: React.FC = () => {
               <div
                 key={pref.id}
                 className={`preference-item ${pref.is_active ? 'active' : 'inactive'}`}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px 24px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  marginBottom: '12px',
+                  backgroundColor: '#fff'
+                }}
               >
-                <div className="preference-number">Profile {index + 1}</div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>
+                    {pref.preference_name || pref.primary_role}
+                  </h3>
+                  <div style={{ display: 'flex', gap: '24px', fontSize: '14px', color: '#666' }}>
+                    {pref.primary_role && (
+                      <div>
+                        <strong>Role:</strong> {pref.primary_role}
+                      </div>
+                    )}
+                    {pref.product && (
+                      <div>
+                        <strong>Product Type:</strong> {pref.product}
+                      </div>
+                    )}
+                    {pref.location && (
+                      <div>
+                        <strong>Job Location:</strong> 📍 {pref.location}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                <div className="preference-header">
-                  <h3>{pref.preference_name}</h3>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <span className={`status ${pref.is_active ? 'active' : 'inactive'}`}>
                     {pref.is_active ? '✓ Active' : '○ Inactive'}
                   </span>
-                </div>
-
-                <div className="preference-content">
-                  {/* Roles */}
-                  <div className="content-block">
-                    <div className="block-label">Roles</div>
-                    <div className="role-tags">
-                      {pref.roles?.map((role) => (
-                        <span key={role} className="role-tag">
-                          {role}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Details Grid */}
-                  <div className="details-grid">
-                    {pref.seniority_level && (
-                      <div className="detail-item">
-                        <span className="detail-label">Seniority</span>
-                        <span className="detail-value">{pref.seniority_level}</span>
-                      </div>
-                    )}
-
-                    {(pref.years_experience_min || pref.years_experience_max) && (
-                      <div className="detail-item">
-                        <span className="detail-label">Experience</span>
-                        <span className="detail-value">
-                          {pref.years_experience_min}-{pref.years_experience_max} yrs
-                        </span>
-                      </div>
-                    )}
-
-                    {(pref.hourly_rate_min || pref.hourly_rate_max) && (
-                      <div className="detail-item">
-                        <span className="detail-label">Rate</span>
-                        <span className="detail-value">
-                          ${pref.hourly_rate_min}-${pref.hourly_rate_max}/hr
-                        </span>
-                      </div>
-                    )}
-
-                    {pref.work_type && (
-                      <div className="detail-item">
-                        <span className="detail-label">Work Type</span>
-                        <span className="detail-value">{pref.work_type}</span>
-                      </div>
-                    )}
-
-                    {pref.availability && (
-                      <div className="detail-item">
-                        <span className="detail-label">Available</span>
-                        <span className="detail-value">{pref.availability}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Skills */}
-                  {pref.required_skills && pref.required_skills.length > 0 && (
-                    <div className="content-block">
-                      <div className="block-label">Required Skills ({pref.required_skills.length})</div>
-                      <div className="skill-tags">
-                        {pref.required_skills.map((skill) => (
-                          <span key={skill} className="skill-tag">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Locations */}
-                  {pref.location_preferences && pref.location_preferences.length > 0 && (
-                    <div className="content-block">
-                      <div className="block-label">Preferred Locations</div>
-                      <div className="location-tags">
-                        {pref.location_preferences.map((location) => (
-                          <span key={location} className="location-tag">
-                            📍 {location}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="preference-footer">
-                  <small>Created {pref.created_at ? new Date(pref.created_at).toLocaleDateString() : 'N/A'}</small>
                   <button
-                    className="btn-view"
-                    onClick={() => navigate('/job-preferences')}
+                    className="btn-edit"
+                    onClick={() => pref.id && handleEditPreference(pref.id)}
+                    style={{ padding: '6px 12px', fontSize: '13px' }}
                   >
-                    Edit Preference →
+                    ✎ Edit
+                  </button>
+                  <button
+                    className="btn-delete"
+                    onClick={() => pref.id && setDeleteConfirm(pref.id)}
+                    style={{ padding: '6px 12px', fontSize: '13px' }}
+                  >
+                    🗑 Delete
                   </button>
                 </div>
+
+                {deleteConfirm === pref.id && pref.id && (
+                  <div className="delete-confirmation">
+                    <p>Are you sure you want to delete this profile?</p>
+                    <div className="confirm-buttons">
+                      <button
+                        className="btn-confirm-yes"
+                        onClick={() => pref.id && handleDeletePreference(pref.id)}
+                      >
+                        Yes, Delete
+                      </button>
+                      <button
+                        className="btn-confirm-no"
+                        onClick={() => setDeleteConfirm(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* Statistics Section */}
-      {totalPreferences > 0 && (
-        <div className="statistics-section">
-          <h2>Preference Statistics</h2>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <h4>Experience Range</h4>
-              <p>
-                {Math.min(
-                  ...(profile.job_preferences
-                    ?.filter((p) => p.years_experience_min)
-                    .map((p) => p.years_experience_min || 0) || [0])
-                )}{' '}
-                -{' '}
-                {Math.max(
-                  ...(profile.job_preferences
-                    ?.filter((p) => p.years_experience_max)
-                    .map((p) => p.years_experience_max || 0) || [0])
-                )}{' '}
-                years
-              </p>
-            </div>
-            <div className="stat-card">
-              <h4>Rate Range</h4>
-              <p>
-                ${Math.min(
-                  ...(profile.job_preferences
-                    ?.filter((p) => p.hourly_rate_min)
-                    .map((p) => p.hourly_rate_min || 0) || [0])
-                )}{' '}
-                - ${Math.max(
-                  ...(profile.job_preferences
-                    ?.filter((p) => p.hourly_rate_max)
-                    .map((p) => p.hourly_rate_max || 0) || [0])
-                )}/hr
-              </p>
-            </div>
-            <div className="stat-card">
-              <h4>Total Skills</h4>
-              <p>
-                {new Set(
-                  profile.job_preferences
-                    ?.flatMap((p) => p.required_skills || [])
-                ).size || 0}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

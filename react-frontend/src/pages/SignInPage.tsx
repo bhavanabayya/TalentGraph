@@ -4,8 +4,9 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authAPI } from '../api/client.ts';
+import { authAPI, candidateAPI } from '../api/client.ts';
 import { useAuth } from '../context/authStore.ts';
+import { getCompanyRoleFromToken } from '../utils/tokenUtils.ts';
 import '../styles/Auth.css';
 
 const SignInPage: React.FC = () => {
@@ -24,28 +25,60 @@ const SignInPage: React.FC = () => {
     try {
       const response = await authAPI.login({ email, password });
       
-      if (response.data.needs_otp === false && response.data.access_token) {
-        // Direct login without OTP - save token and redirect
+      if (response.data.access_token) {
+        // Extract company role from token if it's a company user
+        const companyRole = response.data.user_type === 'company' 
+          ? getCompanyRoleFromToken(response.data.access_token) 
+          : null;
+        
+        // Save token and redirect
         login(
           response.data.access_token,
           response.data.user_id,
           response.data.user_type,
-          email
+          email,
+          companyRole || undefined
         );
         
         // Redirect based on user type
         if (response.data.user_type === 'candidate') {
-          navigate('/candidate-dashboard');
-        } else {
+          // Check if candidate has completed general info
+          try {
+            const statusRes = await candidateAPI.getMe();
+            if (statusRes.data?.is_general_info_complete) {
+              // Existing user - go to dashboard
+              navigate('/candidate-dashboard');
+            } else {
+              // New user - go to general info form
+              navigate('/general-info');
+            }
+          } catch (err) {
+            console.error('Error checking general info status:', err);
+            // Default to general info for safety
+            navigate('/general-info');
+          }
+        } else if (response.data.user_type === 'company') {
+          // Company/Recruiter user - go to company dashboard
           navigate('/company-dashboard');
         }
-      } else if (response.data.needs_otp) {
-        // Legacy OTP flow (if needs_otp is true)
-        localStorage.setItem('pending_email', email);
-        navigate('/otp-verify');
+      } else {
+        setError('Login failed - no access token received');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed');
+      console.error('[SIGNIN] Error:', err);
+      
+      // Try to extract error message from various sources
+      let errorMsg = 'Login failed';
+      
+      if (err.response?.data?.detail) {
+        errorMsg = err.response.data.detail;
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

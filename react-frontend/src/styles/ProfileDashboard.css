@@ -92,20 +92,21 @@
 }
 
 .btn-manage-prefs {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
   color: white;
   padding: 12px 24px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: background 0.3s;
   white-space: nowrap;
 }
 
 .btn-manage-prefs:hover {
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 86, 179, 0.4);
 }
 
 /* Preferences Overview */
@@ -158,23 +159,23 @@
 }
 
 .btn-primary {
-  background: #007bff;
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
   color: white;
   padding: 10px 24px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background 0.3s;
   white-space: nowrap;
 }
 
 .btn-primary:hover {
-  background: #0056b3;
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
 }
 
 .btn-primary-large {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
   color: white;
   padding: 14px 32px;
   border: none;
@@ -182,12 +183,13 @@
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: background 0.3s;
 }
 
 .btn-primary-large:hover {
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 20px rgba(0, 86, 179, 0.4);
 }
 
 /* Empty State */
@@ -375,25 +377,120 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
 .preference-footer small {
   color: #999;
   font-size: 12px;
+  flex: 1;
 }
 
-.btn-view {
-  background: none;
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit,
+.btn-delete {
+  padding: 10px 24px;
   border: none;
-  color: #667eea;
-  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
   font-weight: 600;
-  font-size: 13px;
-  transition: color 0.3s;
+  cursor: pointer;
+  transition: background 0.3s;
+  color: white;
+  white-space: nowrap;
 }
 
-.btn-view:hover {
-  color: #764ba2;
+.btn-edit {
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
+}
+
+.btn-edit:hover {
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
+}
+
+.btn-delete {
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
+}
+
+.btn-delete:hover {
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
+}
+
+/* Delete Confirmation */
+.delete-confirmation {
+  padding: 12px 20px;
+  background: #fff3cd;
+  border-top: 1px solid #ffc107;
+  border-bottom: 1px solid #ffc107;
+  text-align: center;
+}
+
+.delete-confirmation p {
+  margin: 0 0 12px 0;
+  color: #856404;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-confirm-yes,
+.btn-confirm-no {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-confirm-yes {
+  background: linear-gradient(135deg, #0056b3 0%, #4a9eff 100%);
+  color: white;
+}
+
+.btn-confirm-yes:hover {
+  background: linear-gradient(135deg, #003d82 0%, #2b7fd9 100%);
+  transform: translateY(-1px);
+}
+
+.btn-confirm-no {
+  background: linear-gradient(135deg, #4a9eff 0%, #b3d9ff 100%);
+  color: white;
+}
+
+.btn-confirm-no:hover {
+  background: linear-gradient(135deg, #2b7fd9 0%, #80c3ff 100%);
+  transform: translateY(-1px);
+}
+
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #c3e6cb;
+  font-weight: 500;
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #f5c6cb;
+  font-weight: 500;
 }
 
 /* Statistics Section */
@@ -489,6 +586,15 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+
+  .action-buttons {
+    width: 100%;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    flex: 1;
   }
 
   .stats-grid {

@@ -20,15 +20,6 @@ class User(SQLModel, table=True):
     company_user: Optional["CompanyUser"] = Relationship(back_populates="user")
 
 
-class OTPStore(SQLModel, table=True):
-    """OTP storage for multi-factor auth"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(index=True)
-    code: str
-    expires_at: int  # Unix timestamp
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-
 # ============================================================================
 # CANDIDATE SIDE
 # ============================================================================
@@ -37,6 +28,7 @@ class Skill(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     candidate_id: int = Field(foreign_key="candidate.id")
     name: str
+    rating: Optional[int] = Field(default=3)  # 1-5 star rating
     level: Optional[str] = None  # e.g., Beginner / Intermediate / Expert
     category: Optional[str] = None  # "technical", "soft", etc.
 
@@ -64,54 +56,89 @@ class Resume(SQLModel, table=True):
     candidate: "Candidate" = Relationship(back_populates="resumes")
 
 
+class SocialLink(SQLModel, table=True):
+    """Social media and portfolio links for candidates"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidate_id: int = Field(foreign_key="candidate.id")
+    platform: str  # "github", "linkedin", "portfolio", "twitter", "personal-website"
+    url: str
+    display_name: Optional[str] = None  # e.g., "GitHub Profile", "My Portfolio"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    candidate: "Candidate" = Relationship(back_populates="social_links")
+
+
 class CandidateJobPreference(SQLModel, table=True):
     """Job preference profile created by candidate for different roles/products"""
     id: Optional[int] = Field(default=None, primary_key=True)
     candidate_id: int = Field(foreign_key="candidate.id")
     
-    # Product ontology links
-    product_author_id: int = Field(foreign_key="productauthor.id")  # e.g., Oracle
-    product_id: int = Field(foreign_key="product.id")  # e.g., Oracle Fusion
+    # Profile name/label for this preference
+    preference_name: Optional[str] = None  # e.g., "Oracle Fusion - Senior Role"
     
-    # Roles (JSON array of role names, e.g., ["Oracle Fusion Functional Consultant", "Oracle Fusion Technical Consultant"])
-    roles: str  # JSON array
+    # Product/Role selection
+    product: str  # e.g., "SaaS", "E-Business Suite"
+    primary_role: str  # e.g., "Oracle Fusion Functional Consultant"
     
     # Job preferences specific to this profile
-    seniority_level: Optional[str] = None  # Junior / Mid / Senior
-    years_experience_min: Optional[int] = None
-    years_experience_max: Optional[int] = None
-    hourly_rate_min: Optional[float] = None
-    hourly_rate_max: Optional[float] = None
-    
-    # Required skills for this preference (JSON array)
-    required_skills: Optional[str] = None
+    years_experience: Optional[int] = None
+    rate_min: Optional[float] = None
+    rate_max: Optional[float] = None
     
     # Work preferences
     work_type: Optional[str] = None  # Remote / On-site / Hybrid
-    location_preferences: Optional[str] = None  # JSON array of locations
+    location: Optional[str] = None
+    
+    # Visa and Diversity Information for this profile
+    visa_type: Optional[str] = None  # "Citizen", "Permanent Resident", "H1B", "OPT", "Requires Sponsorship", etc.
+    ethnicity: Optional[str] = None  # Optional for diversity tracking
     
     # Availability
     availability: Optional[str] = None  # Immediately / 2 weeks / 1 month
     
+    # Professional summary for this profile
+    summary: Optional[str] = None
+    
+    # Required skills for this role (JSON: [{"name": "skill", "rating": 4}, ...])
+    required_skills: Optional[str] = None
+    
     # Metadata
     is_active: bool = True  # Can deactivate without deleting
-    preference_name: Optional[str] = None  # e.g., "Oracle Fusion - Senior Role"
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     candidate: "Candidate" = Relationship(back_populates="job_preferences")
-    product_author: "ProductAuthor" = Relationship()
-    product: "Product" = Relationship()
 
 
 class Candidate(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", unique=True)
     
+    # General Information
     name: str
-    location: Optional[str] = None
+    email: Optional[str] = None  # Contact email
+    phone: Optional[str] = None  # Contact phone number
+    residential_address: Optional[str] = None  # Full residential address
+    location: Optional[str] = None  # City/Location preference
     profile_picture_path: Optional[str] = None
+    
+    # Visa and Diversity Information
+    visa_type: Optional[str] = None  # "Citizen", "Permanent Resident", "H1B", "OPT", "Requires Sponsorship", etc.
+    ethnicity: Optional[str] = None  # Optional for diversity tracking (e.g., "Asian", "Black or African American", "Hispanic or Latino", "White", "Prefer not to disclose")
+    
+    # General Info Completion Flag
+    is_general_info_complete: bool = False  # Tracks if user has completed initial general info setup
+    
     summary: Optional[str] = None
+    
+    # Product/Role Focus
+    product: Optional[str] = None  # e.g., "SaaS", "E-Business Suite"
+    primary_role: Optional[str] = None  # e.g., "Oracle Fusion Functional Consultant"
+    
+    # Experience and Rate
+    years_experience: Optional[int] = None  # Years of experience
+    rate_min: Optional[float] = None  # Minimum hourly/annual rate
+    rate_max: Optional[float] = None  # Maximum hourly/annual rate
     
     # General preferences (used for broader matching)
     work_type: Optional[str] = None  # Remote / On-site / Hybrid
@@ -124,6 +151,7 @@ class Candidate(SQLModel, table=True):
     skills: List[Skill] = Relationship(back_populates="candidate")
     certifications: List[Certification] = Relationship(back_populates="candidate")
     resumes: List[Resume] = Relationship(back_populates="candidate")
+    social_links: List["SocialLink"] = Relationship(back_populates="candidate")
     job_preferences: List[CandidateJobPreference] = Relationship(back_populates="candidate")
     swipes_given: List["Swipe"] = Relationship(back_populates="candidate")
     applications: List["Application"] = Relationship(back_populates="candidate")
@@ -168,6 +196,8 @@ class JobPost(SQLModel, table=True):
     """Job posting by a company"""
     id: Optional[int] = Field(default=None, primary_key=True)
     company_id: int = Field(foreign_key="companyaccount.id")
+    created_by_user_id: Optional[int] = Field(foreign_key="companyuser.id")  # Recruiter who created this job
+    assigned_to_user_id: Optional[int] = Field(foreign_key="companyuser.id")  # Recruiter assigned to manage this job
     
     title: str
     description: Optional[str] = None
@@ -176,10 +206,18 @@ class JobPost(SQLModel, table=True):
     role: str  # e.g., "Oracle Fusion Functional Consultant"
     seniority: Optional[str] = None  # Junior / Mid / Senior
     
+    # New fields for recruiter portal
+    job_type: Optional[str] = None  # "Permanent" or "Contract"
+    duration: Optional[str] = None  # e.g., "6 months", "1 year"
+    start_date: Optional[datetime] = None  # Job start date
+    currency: Optional[str] = None  # "USD", "EUR", etc.
+    
     location: Optional[str] = None
     work_type: Optional[str] = None  # Remote / On-site / Hybrid
-    min_rate: Optional[float] = None
-    max_rate: Optional[float] = None
+    min_rate: Optional[float] = None  # Hourly rate for contracts
+    max_rate: Optional[float] = None  # Hourly rate for contracts
+    salary_min: Optional[float] = None  # Annual salary for permanent jobs
+    salary_max: Optional[float] = None  # Annual salary for permanent jobs
     required_skills: Optional[str] = None  # JSON array of skill names
     nice_to_have_skills: Optional[str] = None  # JSON array
     
@@ -240,6 +278,46 @@ class JobRole(SQLModel, table=True):
     description: Optional[str] = None
 
     product: Product = Relationship(back_populates="roles")
+
+
+# ============================================================================
+# MATCH STATE TRACKING (Dating App Model)
+# ============================================================================
+
+class MatchState(SQLModel, table=True):
+    """
+    Tracks the interaction state between a candidate and a specific job posting.
+    Similar to dating app swipe mechanics.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidate_id: int = Field(foreign_key="candidate.id", index=True)
+    job_post_id: int = Field(foreign_key="jobpost.id", index=True)
+    
+    # Actions taken by each party
+    candidate_action: str = "NONE"  # NONE, LIKE, PASS, APPLY
+    recruiter_action: str = "NONE"  # NONE, LIKE, PASS, ASK_TO_APPLY
+    
+    # Overall state of the match
+    status: str = "OPEN"  # OPEN, MATCHED, REJECTED, EXPIRED
+    
+    # What information is unlocked for viewing
+    unlock_level: str = "PREVIEW"  # PREVIEW (basic info), PARTIAL (resume + details), FULL (all details)
+    
+    # Match score at time of first interaction
+    initial_match_score: Optional[float] = None  # 0-100
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    candidate_action_at: Optional[datetime] = None
+    recruiter_action_at: Optional[datetime] = None
+    
+    # For ask_to_apply workflow
+    ask_to_apply_message: Optional[str] = None  # Custom message from recruiter
+    ask_to_apply_status: Optional[str] = None  # PENDING, ACCEPTED, DECLINED
+    ask_to_apply_sent_at: Optional[datetime] = None  # When recruiter sent invitation
+    ask_to_apply_expires_at: Optional[datetime] = None  # Expiration date for invitation
+    ask_to_apply_accepted: bool = False  # Whether candidate accepted the invitation
 
 
 # ============================================================================

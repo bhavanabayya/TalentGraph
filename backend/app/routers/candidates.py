@@ -1,11 +1,12 @@
 from pathlib import Path
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
 from ..database import get_session
-from ..models import Candidate, Skill, Certification, Resume, User, Application, JobPost
+from ..models import Candidate, Skill, Certification, Resume, SocialLink, User, Application, JobPost, CandidateJobPreference
 from ..schemas import (
     CandidateCreate,
     CandidateRead,
@@ -14,16 +15,22 @@ from ..schemas import (
     SkillRead,
     CertificationCreate,
     CertificationRead,
+    SocialLinkCreate,
+    SocialLinkRead,
     RoleFitRequest,
     RoleFitResponse,
     ResumeRead,
     ApplicationListRead,
     MatchScoreDisplay,
+    CandidateReadWithPreferences,
+    CandidateJobPreferenceRead,
 )
 from ..security import get_current_user, get_current_user_email, require_candidate
 from ..matching import calculate_match_score
+from ..recommendation_engine import RecommendationEngine
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 UPLOAD_DIR = BASE_DIR / "uploads"
@@ -40,19 +47,42 @@ def get_my_profile(
     session: Session = Depends(get_session)
 ):
     """Get authenticated candidate's profile."""
-    user_id = current_user.get("user_id")
-    
-    candidate = session.exec(
-        select(Candidate).where(Candidate.user_id == user_id)
-    ).first()
-    
-    if not candidate:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Candidate profile not found"
-        )
-    
-    return candidate
+    try:
+        user_id = current_user.get("user_id")
+        logger.info(f"[CANDIDATES] GET /me called for user_id: {user_id}")
+        
+        candidate = session.exec(
+            select(Candidate).where(Candidate.user_id == user_id)
+        ).first()
+        
+        if not candidate:
+            logger.info(f"[CANDIDATES] No candidate found for user_id {user_id}, creating one")
+            # Create a default candidate profile if it doesn't exist
+            user = session.exec(
+                select(User).where(User.id == user_id)
+            ).first()
+            
+            if not user:
+                logger.error(f"[CANDIDATES] User not found for user_id: {user_id}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            
+            candidate = Candidate(
+                user_id=user_id,
+                name=user.email.split('@')[0]  # Use part of email as default name
+            )
+            session.add(candidate)
+            session.commit()
+            session.refresh(candidate)
+            logger.info(f"[CANDIDATES] Candidate created for user_id: {user_id}")
+        
+        logger.info(f"[CANDIDATES] Returning candidate profile for user_id: {user_id}")
+        return candidate
+    except Exception as e:
+        logger.error(f"[CANDIDATES] Error in GET /me: {str(e)}", exc_info=True)
+        raise
 
 
 @router.put("/me", response_model=CandidateRead)
@@ -97,6 +127,231 @@ def get_candidate(candidate_id: int, session: Session = Depends(get_session)):
             detail="Candidate not found"
         )
     return candidate
+
+
+@router.get("/list/all", response_model=list[CandidateReadWithPreferences])
+def list_all_candidates(
+    session: Session = Depends(get_session)
+):
+    """List all candidates with their job preferences (for company users to browse)."""
+    try:
+        logger.info("[CANDIDATES] GET /list/all called")
+        
+        # Get all candidates
+        candidates = session.exec(select(Candidate)).all()
+        
+        result = []
+        for candidate in candidates:
+            # Get job preferences for this candidate
+            preferences = session.exec(
+                select(CandidateJobPreference).where(
+                    CandidateJobPreference.candidate_id == candidate.id
+                )
+            ).all()
+            
+            # Format preferences
+            preferences_data = []
+            for pref in preferences:
+                preferences_data.append(CandidateJobPreferenceRead(
+                    id=pref.id,
+                    candidate_id=pref.candidate_id,
+                    preference_name=pref.preference_name or "",
+                    product=pref.product or "",
+                    primary_role=pref.primary_role or "",
+                    years_experience=pref.years_experience or 0,
+                    rate_min=pref.rate_min,
+                    rate_max=pref.rate_max,
+                    work_type=pref.work_type or "",
+                    location=pref.location or "",
+                    availability=pref.availability or "",
+                    summary=pref.summary or "",
+                    required_skills=pref.required_skills or "",  # Keep as string (JSON)
+                    is_active=pref.is_active or False,
+                    created_at=pref.created_at,
+                    updated_at=pref.updated_at,
+                ))
+            
+            # Get skills for this candidate
+            skills = session.exec(
+                select(Skill).where(Skill.candidate_id == candidate.id)
+            ).all()
+            
+            skills_data = [
+                SkillRead(
+                    id=skill.id,
+                    name=skill.name,
+                    rating=skill.rating,
+                    level=skill.level,
+                    category=skill.category
+                ) for skill in skills
+            ]
+            
+            # Create candidate with preferences
+            result.append(CandidateReadWithPreferences(
+                id=candidate.id,
+                user_id=candidate.user_id,
+                name=candidate.name or "",
+                email=candidate.email or "",
+                location=candidate.location or "",
+                profile_picture_path=candidate.profile_picture_path,
+                summary=candidate.summary or "",
+                years_experience=candidate.years_experience or 0,
+                rate_min=candidate.rate_min,
+                rate_max=candidate.rate_max,
+                work_type=candidate.work_type or "",
+                availability=candidate.availability or "",
+                status="active",
+                created_at=candidate.created_at,
+                updated_at=candidate.updated_at,
+                skills=skills_data,
+                job_preferences=preferences_data
+            ))
+        
+        logger.info(f"[CANDIDATES] Returning {len(result)} candidates with preferences")
+        return result
+    
+    except Exception as e:
+        logger.error(f"[CANDIDATES] Error in GET /list/all: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch candidates: {str(e)}"
+        )
+
+
+@router.get("/me/recommendations", tags=["candidates"])
+def get_candidate_recommendations(
+    top_n: int = 10,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """
+    Get personalized job recommendations for the current candidate.
+    Uses weighted matching algorithm considering:
+    - Role + Seniority (40%)
+    - Start Date/Availability (25%)
+    - Location (20%)
+    - Salary Range (15%)
+    """
+    try:
+        user_email = current_user.get("email")
+        user_id = current_user.get("user_id")
+        logger.info(f"[CANDIDATES] GET /me/recommendations for user {user_email}")
+        
+        # Get candidate profile
+        candidate = session.exec(
+            select(Candidate).where(Candidate.user_id == user_id)
+        ).first()
+        
+        if not candidate:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Candidate profile not found"
+            )
+        
+        # Get candidate's job preferences
+        preferences = session.exec(
+            select(CandidateJobPreference).where(
+                CandidateJobPreference.candidate_id == candidate.id,
+                CandidateJobPreference.is_active == True
+            )
+        ).all()
+        
+        # Get all active job postings
+        jobs = session.exec(
+            select(JobPost).where(JobPost.status == 'active')
+        ).all()
+        
+        # Prepare candidate data
+        candidate_data = {
+            'id': candidate.id,
+            'name': candidate.name,
+            'primary_role': candidate.primary_role,
+            'location': candidate.location,
+            'availability': candidate.availability,
+            'work_type': candidate.work_type,
+            'rate_min': candidate.rate_min,
+            'rate_max': candidate.rate_max,
+        }
+        
+        # Prepare preferences data
+        preferences_data = []
+        for pref in preferences:
+            preferences_data.append({
+                'id': pref.id,
+                'preference_name': pref.preference_name,
+                'primary_role': pref.primary_role,
+                'location': pref.location,
+                'availability': pref.availability,
+                'work_type': pref.work_type,
+                'rate_min': pref.rate_min,
+                'rate_max': pref.rate_max,
+            })
+        
+        # Prepare jobs data
+        jobs_data = []
+        for job in jobs:
+            jobs_data.append({
+                'id': job.id,
+                'title': job.title,
+                'role': job.role,
+                'seniority': job.seniority,
+                'location': job.location,
+                'work_type': job.work_type,
+                'min_rate': job.min_rate,
+                'max_rate': job.max_rate,
+                'start_date': job.start_date,
+                'description': job.description,
+                'product_author': job.product_author,
+                'product': job.product,
+                'required_skills': job.required_skills,
+            })
+        
+        # Get recommendations
+        recommendations = RecommendationEngine.recommend_jobs_for_candidate(
+            candidate_data, preferences_data, jobs_data, top_n
+        )
+        
+        logger.info(f"[CANDIDATES] Returning {len(recommendations)} job recommendations")
+        return {
+            'candidate_id': candidate.id,
+            'candidate_name': candidate.name,
+            'total_recommendations': len(recommendations),
+            'recommendations': recommendations
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[CANDIDATES] Failed to generate recommendations: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate recommendations: {str(e)}"
+        )
+
+
+@router.get("/me/general-info-status", tags=["candidates"])
+def check_general_info_status(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Check if candidate has completed general information setup."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate profile not found"
+        )
+    
+    return {
+        "is_general_info_complete": candidate.is_general_info_complete,
+        "has_required_fields": bool(candidate.name and candidate.email and candidate.phone),
+        "candidate_id": candidate.id
+    }
 
 
 # ============================================================================
@@ -256,6 +511,168 @@ def list_my_certifications(
     ).all()
     
     return [CertificationRead(id=c.id, name=c.name, issuer=c.issuer, year=c.year) for c in certs]
+
+
+# ============================================================================
+# SOCIAL LINKS MANAGEMENT
+# ============================================================================
+
+@router.post("/me/social-links", response_model=SocialLinkRead)
+def add_social_link(
+    social_link: SocialLinkCreate,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Add a social media or portfolio link."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+    
+    new_link = SocialLink(
+        candidate_id=candidate.id,
+        platform=social_link.platform,
+        url=social_link.url,
+        display_name=social_link.display_name
+    )
+    session.add(new_link)
+    session.commit()
+    session.refresh(new_link)
+    
+    return SocialLinkRead(
+        id=new_link.id,
+        platform=new_link.platform,
+        url=new_link.url,
+        display_name=new_link.display_name,
+        created_at=new_link.created_at.isoformat()
+    )
+
+
+@router.get("/me/social-links", response_model=list[SocialLinkRead])
+def list_my_social_links(
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Get all social links for authenticated candidate."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+    
+    links = session.exec(
+        select(SocialLink).where(SocialLink.candidate_id == candidate.id)
+    ).all()
+    
+    return [
+        SocialLinkRead(
+            id=link.id,
+            platform=link.platform,
+            url=link.url,
+            display_name=link.display_name,
+            created_at=link.created_at.isoformat()
+        )
+        for link in links
+    ]
+
+
+@router.put("/me/social-links/{social_link_id}", response_model=SocialLinkRead)
+def update_social_link(
+    social_link_id: int,
+    update: SocialLinkCreate,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Update a social link."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+    
+    link = session.exec(
+        select(SocialLink).where(
+            (SocialLink.id == social_link_id) &
+            (SocialLink.candidate_id == candidate.id)
+        )
+    ).first()
+    
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Social link not found"
+        )
+    
+    link.platform = update.platform
+    link.url = update.url
+    link.display_name = update.display_name
+    
+    session.add(link)
+    session.commit()
+    session.refresh(link)
+    
+    return SocialLinkRead(
+        id=link.id,
+        platform=link.platform,
+        url=link.url,
+        display_name=link.display_name,
+        created_at=link.created_at.isoformat()
+    )
+
+
+@router.delete("/me/social-links/{social_link_id}", status_code=204)
+def delete_social_link(
+    social_link_id: int,
+    current_user: dict = Depends(require_candidate),
+    session: Session = Depends(get_session)
+):
+    """Delete a social link."""
+    user_id = current_user.get("user_id")
+    
+    candidate = session.exec(
+        select(Candidate).where(Candidate.user_id == user_id)
+    ).first()
+    
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Candidate not found"
+        )
+    
+    link = session.exec(
+        select(SocialLink).where(
+            (SocialLink.id == social_link_id) &
+            (SocialLink.candidate_id == candidate.id)
+        )
+    ).first()
+    
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Social link not found"
+        )
+    
+    session.delete(link)
+    session.commit()
 
 
 # ============================================================================

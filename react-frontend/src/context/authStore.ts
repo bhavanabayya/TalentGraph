@@ -9,9 +9,10 @@ export interface AuthState {
   userId: number | null;
   userType: 'candidate' | 'company' | null;
   email: string | null;
+  companyRole: string | null;  // ADMIN, HR, RECRUITER
   isAuthenticated: boolean;
   
-  login: (token: string, userId: number, userType: 'candidate' | 'company', email: string) => void;
+  login: (token: string, userId: number, userType: 'candidate' | 'company', email: string, companyRole?: string) => void;
   logout: () => void;
   loadFromStorage: () => void;
 }
@@ -21,19 +22,24 @@ export const useAuth = create<AuthState>((set) => ({
   userId: null,
   userType: null,
   email: null,
+  companyRole: null,
   isAuthenticated: false,
 
-  login: (token, userId, userType, email) => {
+  login: (token, userId, userType, email, companyRole = null) => {
     localStorage.setItem('access_token', token);
     localStorage.setItem('user_id', userId.toString());
     localStorage.setItem('user_type', userType);
     localStorage.setItem('user_email', email);
+    if (companyRole) {
+      localStorage.setItem('company_role', companyRole);
+    }
 
     set({
       accessToken: token,
       userId,
       userType,
       email,
+      companyRole,
       isAuthenticated: true,
     });
   },
@@ -43,12 +49,14 @@ export const useAuth = create<AuthState>((set) => ({
     localStorage.removeItem('user_id');
     localStorage.removeItem('user_type');
     localStorage.removeItem('user_email');
+    localStorage.removeItem('company_role');
 
     set({
       accessToken: null,
       userId: null,
       userType: null,
       email: null,
+      companyRole: null,
       isAuthenticated: false,
     });
   },
@@ -58,6 +66,7 @@ export const useAuth = create<AuthState>((set) => ({
     const userId = localStorage.getItem('user_id');
     const userType = localStorage.getItem('user_type');
     const email = localStorage.getItem('user_email');
+    const companyRole = localStorage.getItem('company_role');
 
     if (token && userId && userType) {
       set({
@@ -65,6 +74,7 @@ export const useAuth = create<AuthState>((set) => ({
         userId: parseInt(userId),
         userType: userType as 'candidate' | 'company',
         email,
+        companyRole,
         isAuthenticated: true,
       });
     }

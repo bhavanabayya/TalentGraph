@@ -16,6 +16,7 @@ class SignUpRequest(BaseModel):
     email: EmailStr
     password: str  # Must be at least 8 chars, 1 uppercase, 1 number, 1 special char
     user_type: str  # "candidate" or "company"
+    company_role: Optional[str] = None  # "ADMIN", "HR", or "RECRUITER" (only for company users)
     
     @field_validator('password')
     @classmethod
@@ -37,30 +38,7 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    needs_otp: bool
     message: str
-    access_token: str | None = None
-    token_type: str | None = None
-    user_id: int | None = None
-    user_type: str | None = None
-
-
-class SendOTPRequest(BaseModel):
-    email: EmailStr
-
-
-class SendOTPResponse(BaseModel):
-    ok: bool
-    message: str
-    expires_in_sec: int
-
-
-class VerifyOTPRequest(BaseModel):
-    email: EmailStr
-    code: str
-
-
-class VerifyOTPResponse(BaseModel):
     access_token: str
     token_type: str
     user_id: int
@@ -73,6 +51,7 @@ class VerifyOTPResponse(BaseModel):
 
 class SkillCreate(BaseModel):
     name: str
+    rating: Optional[int] = None  # 1-5 star rating
     level: Optional[str] = None
     category: Optional[str] = None
 
@@ -97,10 +76,28 @@ class ResumeRead(BaseModel):
     created_at: str
 
 
+class SocialLinkCreate(BaseModel):
+    platform: str  # "github", "linkedin", "portfolio", "twitter", "personal-website"
+    url: str
+    display_name: Optional[str] = None
+
+
+class SocialLinkRead(SocialLinkCreate):
+    id: int
+    created_at: datetime
+
+
 class CandidateBase(BaseModel):
     name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    residential_address: Optional[str] = None
     location: Optional[str] = None
     profile_picture_path: Optional[str] = None
+    
+    # Visa and Diversity Information
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
     
     product_author: Optional[str] = None
     product: Optional[str] = None
@@ -127,9 +124,11 @@ class CandidateCreate(CandidateBase):
 
 class CandidateRead(CandidateBase):
     id: int
+    is_general_info_complete: bool = False
     skills: List[SkillRead] = []
     certifications: List[CertificationRead] = []
     resumes: List[ResumeRead] = []
+    social_links: List[SocialLinkRead] = []
     
     @field_validator('job_roles', mode='before')
     @classmethod
@@ -144,8 +143,12 @@ class CandidateRead(CandidateBase):
 
 class CandidateProfileUpdate(BaseModel):
     name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    residential_address: Optional[str] = None
     location: Optional[str] = None
-    product_author: Optional[str] = None
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
     product: Optional[str] = None
     primary_role: Optional[str] = None
     summary: Optional[str] = None
@@ -154,9 +157,63 @@ class CandidateProfileUpdate(BaseModel):
     rate_max: Optional[float] = None
     availability: Optional[str] = None
     work_type: Optional[str] = None
-    location_preference_1: Optional[str] = None
-    location_preference_2: Optional[str] = None
-    location_preference_3: Optional[str] = None
+    is_general_info_complete: Optional[bool] = None
+
+
+# ============================================================================
+# JOB PREFERENCES SCHEMAS
+# ============================================================================
+
+class JobPreferenceCreate(BaseModel):
+    preference_name: Optional[str] = None
+    product: str
+    primary_role: str
+    years_experience: Optional[int] = None
+    rate_min: Optional[float] = None
+    rate_max: Optional[float] = None
+    work_type: Optional[str] = None
+    location: Optional[str] = None
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
+    availability: Optional[str] = None
+    summary: Optional[str] = None
+    required_skills: Optional[list] = None  # [{\"name\": \"skill\", \"rating\": 1-5}, ...]
+
+
+class JobPreferenceUpdate(BaseModel):
+    preference_name: Optional[str] = None
+    product: Optional[str] = None
+    primary_role: Optional[str] = None
+    years_experience: Optional[int] = None
+    rate_min: Optional[float] = None
+    rate_max: Optional[float] = None
+    work_type: Optional[str] = None
+    location: Optional[str] = None
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
+    availability: Optional[str] = None
+    summary: Optional[str] = None
+    required_skills: Optional[list] = None  # [{\"name\": \"skill\", \"rating\": 1-5}, ...]
+    is_active: Optional[bool] = None
+
+
+class JobPreferenceRead(BaseModel):
+    id: int
+    preference_name: Optional[str] = None
+    product: str
+    primary_role: str
+    years_experience: Optional[int] = None
+    rate_min: Optional[float] = None
+    rate_max: Optional[float] = None
+    work_type: Optional[str] = None
+    location: Optional[str] = None
+    visa_type: Optional[str] = None
+    ethnicity: Optional[str] = None
+    availability: Optional[str] = None
+    summary: Optional[str] = None
+    required_skills: Optional[str] = None  # JSON string
+    is_active: bool
+    created_at: datetime
 
 
 # ============================================================================
@@ -196,29 +253,52 @@ class CompanyProfileRead(CompanyAccountRead):
 # ============================================================================
 
 class JobPostCreate(BaseModel):
-    title: str
+    title: Optional[str] = None  # Auto-generated from role if not provided
     description: Optional[str] = None
     product_author: str  # "Oracle" for POC
     product: str  # "Oracle EBS", "Oracle Fusion"
     role: str
     seniority: Optional[str] = None
     
+    # New fields
+    job_type: Optional[str] = None  # "Permanent" or "Contract"
+    duration: Optional[str] = None  # e.g., "6 months"
+    start_date: Optional[str] = None  # Date string
+    currency: Optional[str] = None  # "USD", "EUR"
+    
     location: Optional[str] = None
     work_type: Optional[str] = None
-    min_rate: Optional[float] = None
-    max_rate: Optional[float] = None
+    min_rate: Optional[float] = None  # Hourly rate for contracts
+    max_rate: Optional[float] = None  # Hourly rate for contracts
+    salary_min: Optional[float] = None  # Annual salary for permanent jobs
+    salary_max: Optional[float] = None  # Annual salary for permanent jobs
     required_skills: Optional[List[str]] = None
     nice_to_have_skills: Optional[List[str]] = None
+    
+    # Company hierarchy
+    created_by_user_id: Optional[int] = None  # Will be auto-populated from token
+    assigned_to_user_id: Optional[int] = None  # Recruiter assigned to manage this job
 
 
 class JobPostUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    product_author: Optional[str] = None
+    product: Optional[str] = None
+    role: Optional[str] = None
+    seniority: Optional[str] = None
+    job_type: Optional[str] = None
+    duration: Optional[str] = None
+    start_date: Optional[str] = None
+    currency: Optional[str] = None
     location: Optional[str] = None
     work_type: Optional[str] = None
     min_rate: Optional[float] = None
     max_rate: Optional[float] = None
+    salary_min: Optional[float] = None
+    salary_max: Optional[float] = None
     status: Optional[str] = None
+    assigned_to_user_id: Optional[int] = None
 
 
 class JobPostRead(JobPostCreate):
@@ -423,19 +503,17 @@ class CandidateJobPreferenceRead(BaseModel):
     """Read job preference"""
     id: int
     candidate_id: int
-    product_author_id: int
-    product_id: int
-    roles: List[str]
-    seniority_level: Optional[str]
-    years_experience_min: Optional[int]
-    years_experience_max: Optional[int]
-    hourly_rate_min: Optional[float]
-    hourly_rate_max: Optional[float]
-    required_skills: Optional[List[str]]
-    work_type: Optional[str]
-    location_preferences: Optional[List[str]]
-    availability: Optional[str]
     preference_name: Optional[str]
+    product: str
+    primary_role: str
+    years_experience: Optional[int]
+    rate_min: Optional[float]
+    rate_max: Optional[float]
+    work_type: Optional[str]
+    location: Optional[str]
+    availability: Optional[str]
+    summary: Optional[str]
+    required_skills: Optional[str]  # JSON string
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -449,13 +527,19 @@ class CandidateReadWithPreferences(BaseModel):
     id: int
     user_id: int
     name: str
+    email: Optional[str]
     location: Optional[str]
     profile_picture_path: Optional[str]
     summary: Optional[str]
+    years_experience: Optional[int]
+    rate_min: Optional[float]
+    rate_max: Optional[float]
     work_type: Optional[str]
     availability: Optional[str]
+    status: Optional[str] = None  # For active/inactive status
     created_at: datetime
     updated_at: datetime
+    skills: Optional[List[SkillRead]] = []
     job_preferences: List[CandidateJobPreferenceRead]
     
     class Config:

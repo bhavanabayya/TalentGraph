@@ -10,6 +10,7 @@ export interface SignUpRequest {
   email: string;
   password: string;
   user_type: 'candidate' | 'company';
+  company_role?: 'ADMIN' | 'HR' | 'RECRUITER';
 }
 
 export interface LoginRequest {
@@ -17,28 +18,17 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface SendOTPRequest {
-  email: string;
-}
-
-export interface VerifyOTPRequest {
-  email: string;
-  code: string;
-}
-
-export interface VerifyOTPResponse {
-  access_token: string;
-  token_type: string;
-  user_id: number;
-  user_type: string;
-}
-
 export interface CandidateProfile {
   id?: number;
   user_id?: number;
   name: string;
+  email?: string;
+  phone?: string;
+  residential_address?: string;
   location?: string;
   profile_picture_path?: string;
+  visa_type?: string;
+  ethnicity?: string;
   product_author?: string;
   product?: string;
   primary_role?: string;
@@ -51,7 +41,8 @@ export interface CandidateProfile {
   location_preference_1?: string;
   location_preference_2?: string;
   location_preference_3?: string;
-  skills?: Array<{ id: number; name: string; level?: string; category?: string }>;
+  is_general_info_complete?: boolean;
+  skills?: Array<{ id: number; name: string; level?: string; category?: string; rating?: number }>;
   certifications?: any[];
   resumes?: any[];
   applications?: any[];
@@ -60,6 +51,7 @@ export interface CandidateProfile {
 export interface Skill {
   id?: number;
   name: string;
+  rating?: number;  // 1-5 star rating
   level?: string;
   category?: string;
 }
@@ -83,16 +75,22 @@ export interface JobPreference {
   product_author_id: number;
   product_id: number;
   roles: string[];
+  primary_role?: string;
+  product?: string;
+  location?: string;
   seniority_level?: string;
   years_experience_min?: number;
   years_experience_max?: number;
   hourly_rate_min?: number;
   hourly_rate_max?: number;
-  required_skills?: string[];
+  required_skills?: string[] | string;
   work_type?: string;
+  visa_type?: string;
+  ethnicity?: string;
   location_preferences?: string[];
   availability?: string;
   preference_name?: string;
+  summary?: string;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -121,10 +119,16 @@ export interface JobPost {
   product: string;
   role: string;
   seniority?: string;
+  job_type?: string;
+  duration?: string;
+  start_date?: string;
+  currency?: string;
   location?: string;
   work_type?: string;
   min_rate?: number;
   max_rate?: number;
+  salary_min?: number;
+  salary_max?: number;
   required_skills?: string[];
   nice_to_have_skills?: string[];
   status: string;
@@ -225,6 +229,23 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     console.error(`[API-RESPONSE-ERROR] ${error.config?.url} - ${error.response?.status} - ${error.response?.data?.detail || error.message}`);
+    
+    // Handle expired/invalid token (401 Unauthorized or 403 Forbidden)
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const detail = error.response?.data?.detail || '';
+      // If token is invalid or user doesn't have access, clear auth and redirect to login
+      if (detail.includes('access required') || detail.includes('Invalid token') || detail.includes('Unauthorized')) {
+        console.log('[API] Token expired or invalid - clearing auth state');
+        removeToken();
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('user_type');
+        localStorage.removeItem('user_email');
+        localStorage.removeItem('company_role');
+        // Redirect to signin page
+        window.location.href = '/signin';
+      }
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -245,22 +266,6 @@ export const authAPI = {
     console.log(`[AUTH-API] Login attempt - email: ${data.email}`);
     return apiClient.post('/auth/login', data).then(res => {
       console.log('[AUTH-API] Login successful - returning response');
-      return res;
-    });
-  },
-
-  sendOTP: (data: SendOTPRequest) => {
-    console.log(`[AUTH-API] Sending OTP to ${data.email}`);
-    return apiClient.post('/auth/send-otp', data).then(res => {
-      console.log(`[AUTH-API] OTP sent successfully`);
-      return res;
-    });
-  },
-
-  verifyOTP: (data: VerifyOTPRequest) => {
-    console.log(`[AUTH-API] Verifying OTP for ${data.email}`);
-    return apiClient.post<VerifyOTPResponse>('/auth/verify-otp', data).then(res => {
-      console.log('[AUTH-API] OTP verified successfully - token received');
       return res;
     });
   },
@@ -302,6 +307,19 @@ export const candidateAPI = {
   listCertifications: () =>
     apiClient.get<Certification[]>('/candidates/me/certifications'),
 
+  // Social Links
+  addSocialLink: (link: { platform: string; url: string; display_name?: string }) =>
+    apiClient.post('/candidates/me/social-links', link),
+
+  getSocialLinks: () =>
+    apiClient.get('/candidates/me/social-links'),
+
+  updateSocialLink: (linkId: number, link: { platform: string; url: string; display_name?: string }) =>
+    apiClient.put(`/candidates/me/social-links/${linkId}`, link),
+
+  deleteSocialLink: (linkId: number) =>
+    apiClient.delete(`/candidates/me/social-links/${linkId}`),
+
   // Resumes
   uploadResume: (file: File) => {
     const formData = new FormData();
@@ -330,6 +348,10 @@ export const candidateAPI = {
       product,
       job_role: role,
     }),
+  
+  // List all candidates with preferences (for company users)
+  listAllCandidates: () =>
+    apiClient.get<CandidateProfile[]>('/candidates/list/all'),
 };
 
 // ============================================================================
@@ -405,6 +427,9 @@ export const jobsAPI = {
   list: () =>
     apiClient.get<JobPost[]>('/jobs/'),
 
+  listAll: () =>
+    apiClient.get<JobPost[]>('/jobs/available'),
+
   get: (jobId: number) =>
     apiClient.get<JobPost>(`/jobs/${jobId}`),
 
@@ -413,6 +438,38 @@ export const jobsAPI = {
 
   delete: (jobId: number) =>
     apiClient.delete(`/jobs/${jobId}`),
+
+  // Company-wide job listing (Admin/HR only)
+  getCompanyAllPostings: () =>
+    apiClient.get<JobPost[]>('/jobs/company/all-postings'),
+
+  // Recruiter's own job postings (created by current user)
+  getRecruiterAccessiblePostings: () =>
+    apiClient.get<JobPost[]>('/jobs/recruiter/my-accessible-postings'),
+
+  // Jobs assigned to current recruiter
+  getJobsAssignedToMe: () =>
+    apiClient.get<JobPost[]>('/jobs/assigned-to-me'),
+
+  // All company job postings for recruiter view
+  getRecruiterPostings: () =>
+    apiClient.get<JobPost[]>('/jobs/recruiter/my-postings'),
+
+  createJobPosting: (data: Partial<JobPost>) =>
+    apiClient.post<JobPost>('/jobs/recruiter/create', data),
+
+  updateJobPosting: (jobId: number, data: Partial<JobPost>) =>
+    apiClient.put<JobPost>(`/jobs/recruiter/${jobId}`, data),
+
+  deleteJobPosting: (jobId: number) =>
+    apiClient.delete(`/jobs/recruiter/${jobId}`),
+
+  // Team management endpoints
+  assignJobToRecruiter: (jobId: number, assignedToUserId: number) =>
+    apiClient.put<JobPost>(`/jobs/${jobId}/assign`, { assigned_to_user_id: assignedToUserId }),
+
+  getTeamWorkload: () =>
+    apiClient.get<any[]>('/jobs/team/workload'),
 };
 
 // ============================================================================
@@ -443,4 +500,70 @@ export const swipesAPI = {
     apiClient.get<RankingItem[]>(`/swipes/ranking/${jobId}`),
 };
 
-export default apiClient;
+// ============================================================================
+// RECOMMENDATIONS API
+// ============================================================================
+export const recommendationsAPI = {
+  // Get job recommendations for current candidate
+  getCandidateRecommendations: (topN: number = 10, offset: number = 0) =>
+    apiClient.get<any>('/candidates/me/recommendations', {
+      params: { top_n: topN, offset }
+    }),
+
+  // Get candidate recommendations for a specific job
+  getJobRecommendations: (jobId: number, topN: number = 10, offset: number = 0) =>
+    apiClient.get<any>(`/jobs/recommendations/${jobId}`, {
+      params: { top_n: topN, offset }
+    }),
+
+  // Get all candidate recommendations across all company jobs
+  getAllRecommendations: (topN: number = 10, offset: number = 0) =>
+    apiClient.get<any>('/jobs/recommendations/all', {
+      params: { top_n: topN, offset }
+    }),
+};
+
+// ============================================================================
+// MATCH STATE API (Swipe Actions)
+// ============================================================================
+export const matchesAPI = {
+  // Candidate actions on a job
+  candidateAction: (candidateId: number, jobId: number, action: 'LIKE' | 'PASS' | 'APPLY') =>
+    apiClient.post<any>('/matches/candidate/action', {
+      candidate_id: candidateId,
+      job_id: jobId,
+      action
+    }),
+
+  // Recruiter actions on a candidate for a job
+  recruiterAction: (candidateId: number, jobId: number, action: 'LIKE' | 'PASS' | 'ASK_TO_APPLY', message?: string) =>
+    apiClient.post<any>('/matches/recruiter/action', {
+      candidate_id: candidateId,
+      job_id: jobId,
+      action,
+      message
+    }),
+
+  // Get pending ask-to-apply requests for candidate
+  getPendingAsks: (candidateId: number) =>
+    apiClient.get<any>(`/matches/candidate/pending-asks/${candidateId}`),
+
+  // Respond to ask-to-apply request
+  respondToAsk: (matchStateId: number, accept: boolean) =>
+    apiClient.post<any>('/matches/candidate/respond-to-ask', {
+      match_state_id: matchStateId,
+      accept
+    }),
+
+  // Get match state for a candidate-job pair
+  getMatchState: (candidateId: number, jobId: number) =>
+    apiClient.get<any>(`/matches/state/${candidateId}/${jobId}`),
+
+  // Get recruiter's shortlist (liked candidates)
+  getRecruiterShortlist: (companyId: number) =>
+    apiClient.get<any>(`/matches/recruiter/shortlist/${companyId}`),
+
+  // Get candidate's liked jobs
+  getCandidateLikes: (candidateId: number) =>
+    apiClient.get<any>(`/matches/candidate/likes/${candidateId}`),
+};

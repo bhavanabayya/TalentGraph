@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +16,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 logger.info("Environment variables loaded")
 
 from .database import init_db
-from .routers import candidates, job_roles, auth, company, jobs, swipes, preferences
+from .routers import candidates, job_roles, auth, company, jobs, swipes, preferences, matches
 
 logger.info("Routers imported successfully")
 
@@ -26,15 +27,27 @@ app = FastAPI(
 )
 
 # Enable CORS for React frontend
+raw_origins = os.getenv("CORS_ORIGINS")
+if raw_origins:
+    cors_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+else:
+    cors_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"],  # Expose all headers
+    max_age=600,
 )
 
 
@@ -62,4 +75,5 @@ app.include_router(preferences.router)
 app.include_router(company.router)
 app.include_router(jobs.router)
 app.include_router(swipes.router)
+app.include_router(matches.router)
 app.include_router(job_roles.router)
