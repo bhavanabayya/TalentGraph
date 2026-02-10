@@ -566,4 +566,8 @@ export const matchesAPI = {
   // Get candidate's liked jobs
   getCandidateLikes: (candidateId: number) =>
     apiClient.get<any>(`/matches/candidate/likes/${candidateId}`),
+
+  // Get invitations sent by current recruiter
+  getSentRequests: () =>
+    apiClient.get<any[]>('/matches/recruiter/sent-requests'),
 };
