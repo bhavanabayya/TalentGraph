@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import { matchesAPI } from '../api/client'; // TODO: Add getSentRequests endpoint
+import { matchesAPI } from '../api/client';
 
 interface SentRequest {
   id: number;
@@ -23,7 +23,7 @@ const SentRequestsPage: React.FC = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<SentRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'PENDING' | 'ACCEPTED' | 'DECLINED'>('all');
+  const [filter, setFilter] = useState<'all' | 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED'>('all');
 
   useEffect(() => {
     fetchSentRequests();
@@ -32,22 +32,8 @@ const SentRequestsPage: React.FC = () => {
   const fetchSentRequests = async () => {
     try {
       setLoading(true);
-      // TODO: Add API endpoint for recruiter's sent requests
-      // const response = await matchesAPI.getSentRequests();
-      // setRequests(response.data || []);
-      
-      // Mock data for now
-      setRequests([
-        {
-          id: 1,
-          candidate: { id: 1, name: 'Sarah Anderson', headline: 'Senior Software Engineer' },
-          job: { id: 1, title: 'Full Stack Developer' },
-          message: 'We would love to have you join our team!',
-          sent_at: '2025-01-20T10:00:00Z',
-          status: 'PENDING',
-          expires_at: '2025-01-27T10:00:00Z'
-        }
-      ]);
+      const response = await matchesAPI.getSentRequests();
+      setRequests(response.data || []);
     } catch (error) {
       console.error('Failed to fetch sent requests:', error);
     } finally {
@@ -126,7 +112,7 @@ const SentRequestsPage: React.FC = () => {
         borderBottom: '2px solid #e5e7eb',
         paddingBottom: '8px'
       }}>
-        {['all', 'PENDING', 'ACCEPTED', 'DECLINED'].map((tab) => (
+        {['all', 'PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED'].map((tab) => (
           <button
             key={tab}
             onClick={() => setFilter(tab as any)}

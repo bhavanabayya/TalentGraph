@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from ..database import get_session
 from ..models import MatchState, Candidate, JobPost, Application, CompanyUser, User
-from ..security import get_current_user
+from ..security import get_current_user, require_company_role
 
 import logging
 logger = logging.getLogger(__name__)
@@ -38,6 +38,20 @@ class RecruiterActionRequest(BaseModel):
 class RespondToAskRequest(BaseModel):
     match_state_id: int
     accept: bool  # True = accept and apply, False = decline
+
+
+def _ask_status(match: MatchState) -> str:
+    """Return normalized invitation status for recruiter/candidate inbox views."""
+    if match.ask_to_apply_expires_at and datetime.utcnow() > match.ask_to_apply_expires_at:
+        return "EXPIRED"
+
+    if match.ask_to_apply_status in {"PENDING", "ACCEPTED", "DECLINED", "EXPIRED"}:
+        return match.ask_to_apply_status
+
+    if match.ask_to_apply_accepted is True:
+        return "ACCEPTED"
+
+    return "PENDING"
 
 
 # ============================================================================
@@ -238,6 +252,7 @@ def recruiter_action(
         # Set expiry (e.g., 30 days from now)
         match.ask_to_apply_expires_at = datetime.utcnow() + timedelta(days=30)
         match.ask_to_apply_accepted = False  # Not accepted yet
+        match.ask_to_apply_status = "PENDING"
         
         # AUDIT LOG: Track invitation details
         logger.info(
@@ -285,20 +300,24 @@ def get_pending_asks(
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     
-    # Query pending asks
+    # Query invitations that are still in pending state
     now = datetime.utcnow()
     statement = select(MatchState).where(
         MatchState.candidate_id == candidate_id,
         MatchState.recruiter_action == "ASK_TO_APPLY",
-        MatchState.ask_to_apply_accepted == False,
         MatchState.ask_to_apply_expires_at > now  # Not expired
     )
-    
-    pending_asks = session.exec(statement).all()
-    
+
+    invites = session.exec(statement).all()
+
     # Enrich with job details
     result = []
-    for match in pending_asks:
+    for match in invites:
+        # Keep only canonical pending rows (with legacy fallback)
+        status = _ask_status(match)
+        if status != "PENDING":
+            continue
+
         job = session.get(JobPost, match.job_post_id)
         if job:
             result.append({
@@ -358,12 +377,13 @@ def respond_to_ask(
         raise HTTPException(status_code=400, detail="This is not an ask-to-apply invitation")
     
     # Check if already responded
-    if match.ask_to_apply_accepted is not None:
+    if match.ask_to_apply_status in {"ACCEPTED", "DECLINED"}:
         raise HTTPException(status_code=400, detail="Already responded to this invitation")
     
     # Check if expired
     if match.ask_to_apply_expires_at and datetime.utcnow() > match.ask_to_apply_expires_at:
         match.status = "EXPIRED"
+        match.ask_to_apply_status = "EXPIRED"
         session.add(match)
         session.commit()
         raise HTTPException(status_code=400, detail="This invitation has expired")
@@ -380,6 +400,7 @@ def respond_to_ask(
         match.candidate_action = "APPLY"
         match.candidate_action_at = datetime.utcnow()
         match.status = "MATCHED"
+        match.ask_to_apply_status = "ACCEPTED"
         
         # Create application
         existing_app = session.exec(
@@ -406,6 +427,7 @@ def respond_to_ask(
     else:
         # Declined
         match.status = "REJECTED"
+        match.ask_to_apply_status = "DECLINED"
         
         # AUDIT LOG: Track rejection
         logger.info(
@@ -440,7 +462,7 @@ def get_match_state(
     """
     statement = select(MatchState).where(
         MatchState.candidate_id == candidate_id,
-        MatchState.job_id == job_id
+        MatchState.job_post_id == job_id
     )
     match = session.exec(statement).first()
     
@@ -589,3 +611,69 @@ def get_candidate_likes(
         "total": len(result),
         "liked_jobs": result
     }
+
+
+@router.get("/recruiter/sent-requests")
+def get_recruiter_sent_requests(
+    session: Session = Depends(get_session),
+    current_user: dict = Depends(require_company_role(["RECRUITER", "HR", "ADMIN"]))
+):
+    """
+    Get ASK_TO_APPLY invitations sent by the current recruiter.
+    Used by recruiter Sent Invitations page.
+    """
+    recruiter_email = current_user.get("sub")
+    user = session.exec(select(User).where(User.email == recruiter_email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    recruiter = session.exec(select(CompanyUser).where(CompanyUser.user_id == user.id)).first()
+    if not recruiter:
+        raise HTTPException(status_code=403, detail="Only company users can view sent invitations")
+
+    company_role = current_user.get("company_role")
+    jobs_query = select(JobPost).where(JobPost.company_id == recruiter.company_id)
+
+    # Recruiters see invitations sent for jobs they created.
+    # HR/Admin can review all invitations in the company.
+    if company_role == "RECRUITER":
+        jobs_query = jobs_query.where(JobPost.created_by_user_id == user.id)
+
+    recruiter_jobs = session.exec(jobs_query).all()
+    recruiter_job_ids = [job.id for job in recruiter_jobs if job.id is not None]
+    if not recruiter_job_ids:
+        return []
+
+    sent_requests = session.exec(
+        select(MatchState).where(
+            MatchState.job_post_id.in_(recruiter_job_ids),
+            MatchState.recruiter_action == "ASK_TO_APPLY",
+        )
+    ).all()
+
+    response = []
+    for item in sent_requests:
+        candidate = session.get(Candidate, item.candidate_id)
+        job = session.get(JobPost, item.job_post_id)
+        if not candidate or not job:
+            continue
+
+        response.append({
+            "id": item.id,
+            "candidate": {
+                "id": candidate.id,
+                "name": candidate.name,
+                "headline": candidate.primary_role,
+            },
+            "job": {
+                "id": job.id,
+                "title": job.title,
+            },
+            "message": item.ask_to_apply_message,
+            "sent_at": item.ask_to_apply_sent_at,
+            "status": _ask_status(item),
+            "expires_at": item.ask_to_apply_expires_at,
+        })
+
+    response.sort(key=lambda x: x.get("sent_at") or datetime.min, reverse=True)
+    return response
