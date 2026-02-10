@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from ..database import get_session
 from ..models import MatchState, Candidate, JobPost, Application, CompanyUser, User
-from ..security import get_current_user
+from ..security import get_current_user, require_company_role
 
 import logging
 logger = logging.getLogger(__name__)
@@ -300,20 +300,24 @@ def get_pending_asks(
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     
-    # Query pending asks
+    # Query invitations that are still in pending state
     now = datetime.utcnow()
     statement = select(MatchState).where(
         MatchState.candidate_id == candidate_id,
         MatchState.recruiter_action == "ASK_TO_APPLY",
-        MatchState.ask_to_apply_accepted == False,
         MatchState.ask_to_apply_expires_at > now  # Not expired
     )
-    
-    pending_asks = session.exec(statement).all()
-    
+
+    invites = session.exec(statement).all()
+
     # Enrich with job details
     result = []
-    for match in pending_asks:
+    for match in invites:
+        # Keep only canonical pending rows (with legacy fallback)
+        status = _ask_status(match)
+        if status != "PENDING":
+            continue
+
         job = session.get(JobPost, match.job_post_id)
         if job:
             result.append({
@@ -612,7 +616,7 @@ def get_candidate_likes(
 @router.get("/recruiter/sent-requests")
 def get_recruiter_sent_requests(
     session: Session = Depends(get_session),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_company_role(["RECRUITER", "HR", "ADMIN"]))
 ):
     """
     Get ASK_TO_APPLY invitations sent by the current recruiter.
@@ -627,12 +631,15 @@ def get_recruiter_sent_requests(
     if not recruiter:
         raise HTTPException(status_code=403, detail="Only company users can view sent invitations")
 
-    recruiter_jobs = session.exec(
-        select(JobPost).where(
-            JobPost.company_id == recruiter.company_id,
-            JobPost.created_by_user_id == user.id,
-        )
-    ).all()
+    company_role = current_user.get("company_role")
+    jobs_query = select(JobPost).where(JobPost.company_id == recruiter.company_id)
+
+    # Recruiters see invitations sent for jobs they created.
+    # HR/Admin can review all invitations in the company.
+    if company_role == "RECRUITER":
+        jobs_query = jobs_query.where(JobPost.created_by_user_id == user.id)
+
+    recruiter_jobs = session.exec(jobs_query).all()
     recruiter_job_ids = [job.id for job in recruiter_jobs if job.id is not None]
     if not recruiter_job_ids:
         return []

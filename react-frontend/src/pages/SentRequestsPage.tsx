@@ -23,7 +23,7 @@ const SentRequestsPage: React.FC = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<SentRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'PENDING' | 'ACCEPTED' | 'DECLINED'>('all');
+  const [filter, setFilter] = useState<'all' | 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED'>('all');
 
   useEffect(() => {
     fetchSentRequests();
@@ -112,7 +112,7 @@ const SentRequestsPage: React.FC = () => {
         borderBottom: '2px solid #e5e7eb',
         paddingBottom: '8px'
       }}>
-        {['all', 'PENDING', 'ACCEPTED', 'DECLINED'].map((tab) => (
+        {['all', 'PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED'].map((tab) => (
           <button
             key={tab}
             onClick={() => setFilter(tab as any)}
